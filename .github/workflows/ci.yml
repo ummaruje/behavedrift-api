@@ -1,0 +1,243 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================
+  # Stage 1: Validate OpenAPI Spec
+  # ============================================================
+  openapi-validate:
+    name: Validate OpenAPI Spec
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install spec validation tool
+        run: pip install openapi-spec-validator
+
+      - name: Validate OpenAPI spec
+        run: python -m openapi_spec_validator docs/openapi.yaml
+
+  # ============================================================
+  # Stage 2: Lint & Format Check
+  # ============================================================
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run Ruff linter
+        run: ruff check app/ tests/
+
+      - name: Check Black formatting
+        run: black app/ tests/ --check
+
+      - name: Run mypy type checks
+        run: mypy app/ --ignore-missing-imports
+
+  # ============================================================
+  # Stage 3: Unit & Integration Tests
+  # ============================================================
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: [openapi-validate, lint]
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: behavedrift
+          POSTGRES_PASSWORD: behavedrift_ci
+          POSTGRES_DB: behavedrift_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://behavedrift:behavedrift_ci@localhost:5432/behavedrift_test
+      TEST_DATABASE_URL: postgresql://behavedrift:behavedrift_ci@localhost:5432/behavedrift_test
+      REDIS_URL: redis://localhost:6379/0
+      ENVIRONMENT: test
+      JWT_SECRET_KEY: ci-test-secret-not-for-production
+      BASELINE_WINDOW_DAYS: 28
+      DRIFT_ALERT_THRESHOLD_T1: 0.40
+      DRIFT_ALERT_THRESHOLD_T2: 0.60
+      DRIFT_ALERT_THRESHOLD_T3: 0.75
+      DRIFT_ALERT_THRESHOLD_T4: 0.90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run database migrations
+        run: python -m alembic upgrade head
+
+      - name: Run unit tests
+        run: pytest tests/unit/ -v --tb=short
+
+      - name: Run integration tests
+        run: pytest tests/integration/ -v --tb=short
+
+      - name: Check coverage threshold
+        run: |
+          pytest tests/ \
+            --cov=app \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=70
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage.xml
+          fail_ci_if_error: false
+
+  # ============================================================
+  # Stage 4: Contract Tests (OpenAPI Spec vs Implementation)
+  # ============================================================
+  contract-test:
+    name: Contract Tests
+    runs-on: ubuntu-latest
+    needs: [test]
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: behavedrift
+          POSTGRES_PASSWORD: behavedrift_ci
+          POSTGRES_DB: behavedrift_contract
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://behavedrift:behavedrift_ci@localhost:5432/behavedrift_contract
+      TEST_DATABASE_URL: postgresql://behavedrift:behavedrift_ci@localhost:5432/behavedrift_contract
+      REDIS_URL: redis://localhost:6379/0
+      ENVIRONMENT: test
+      JWT_SECRET_KEY: ci-test-secret-not-for-production
+      BASELINE_WINDOW_DAYS: 28
+      DRIFT_ALERT_THRESHOLD_T1: 0.40
+      DRIFT_ALERT_THRESHOLD_T2: 0.60
+      DRIFT_ALERT_THRESHOLD_T3: 0.75
+      DRIFT_ALERT_THRESHOLD_T4: 0.90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pip install schemathesis
+
+      - name: Start API server
+        run: |
+          python -m alembic upgrade head
+          python -m pytest tests/fixtures/seed_contract_data.py
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+          curl --fail http://localhost:8000/health
+
+      - name: Run contract tests
+        run: |
+          schemathesis run docs/openapi.yaml \
+            --base-url http://localhost:8000 \
+            --checks all \
+            --hypothesis-max-examples 50
+
+  # ============================================================
+  # Stage 5: Security Scan
+  # ============================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [lint]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install security tools
+        run: pip install bandit safety
+
+      - name: Run Bandit (code security scan)
+        run: bandit -r app/ -ll --exit-zero
+
+      - name: Run Safety (dependency vulnerability scan)
+        run: safety check -r requirements.txt --bare

@@ -1,0 +1,30 @@
+# BehaveDrift API — Code Owners
+# These owners are automatically requested for review on any PR
+# that modifies the matching files or directories.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global default — all files require review from the maintainer
+*                               @umarisa
+
+# OpenAPI specification — critical, always requires maintainer review
+docs/openapi.yaml               @umarisa
+
+# Architecture Decision Records
+docs/adr/                       @umarisa
+
+# Drift detection engine — core business logic
+app/services/drift_engine.py    @umarisa
+app/patterns/                   @umarisa
+
+# Authentication and security
+app/auth/                       @umarisa
+app/middleware/                 @umarisa
+
+# Database migrations — require explicit review, never auto-merge
+alembic/versions/               @umarisa
+
+# CI/CD configuration
+.github/workflows/              @umarisa
+
+# Security and compliance docs
+SECURITY.md                     @umarisa

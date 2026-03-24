@@ -1,0 +1,1875 @@
+openapi: "3.1.0"
+
+info:
+  title: BehaveDrift API
+  version: 1.0.0
+  description: |
+    **BehaveDrift API** is an open-source AI inference engine that detects
+    behavioural pattern drift in dementia residents.
+
+    It accepts longitudinal care observation data and returns:
+    - A **drift score** quantifying deviation from each resident's personal baseline
+    - **Tiered alerts** (T1–T4) with natural-language explanations
+    - **FHIR R4** Condition resources for clinical handover
+
+    ### Authentication
+
+    Two modes are supported:
+
+    **OAuth2 Client Credentials (recommended for production):**
+    ```
+    POST /v1/auth/token
+    grant_type=client_credentials&client_id=...&client_secret=...
+    Authorization: Bearer <jwt>
+    ```
+
+    **API Key (for self-hosted / development):**
+    ```
+    X-API-Key: bda_sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    ```
+
+    ### Error Responses
+    All errors use a consistent shape:
+    ```json
+    {
+      "error": "validation_error",
+      "message": "Field 'resident_id' is required.",
+      "code": 422,
+      "details": [],
+      "request_id": "req_abc123"
+    }
+    ```
+
+    ### Versioning
+    All endpoints are prefixed with `/v1/`. Breaking changes increment to `/v2/`.
+
+  contact:
+    name: Umar Isa
+    email: hello@behavedrift.io
+    url: https://github.com/umarisa/behavedrift-api
+
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.behavedrift.io
+    description: Production (when deployed)
+
+tags:
+  - name: Health
+    description: Service health and status
+  - name: Auth
+    description: Token issuance and tenant provisioning
+  - name: Residents
+    description: Resident registration and baseline management
+  - name: Observations
+    description: Behavioural observation ingestion
+  - name: Alerts
+    description: Drift alerts and acknowledgements
+  - name: Analytics
+    description: Population-level and longitudinal analytics
+  - name: Webhooks
+    description: Webhook endpoint management
+
+# ============================================================
+# SECURITY SCHEMES
+# ============================================================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: OAuth2 Client Credentials JWT (RS256, 60 min TTL)
+
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API Key for self-hosted / development use
+
+  # ============================================================
+  # SHARED SCHEMAS
+  # ============================================================
+  schemas:
+
+    # ---------- Error ----------
+    ErrorResponse:
+      type: object
+      required: [error, message, code, request_id]
+      properties:
+        error:
+          type: string
+          description: Machine-readable error code (snake_case)
+          example: validation_error
+        message:
+          type: string
+          description: Human-readable explanation
+          example: "Field 'resident_id' is required and cannot be blank."
+        code:
+          type: integer
+          description: HTTP status code
+          example: 422
+        details:
+          type: array
+          description: Field-level validation errors (422 only)
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: resident_id
+              issue:
+                type: string
+                example: required
+              value:
+                nullable: true
+                example: null
+        request_id:
+          type: string
+          description: Unique request ID for log correlation
+          example: req_4f3a9c21d
+        documentation_url:
+          type: string
+          format: uri
+          example: https://docs.behavedrift.io/errors/validation_error
+
+    # ---------- Pagination ----------
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 142
+        page:
+          type: integer
+          example: 1
+        page_size:
+          type: integer
+          example: 20
+        has_next:
+          type: boolean
+          example: true
+
+    # ---------- Resident ----------
+    ResidentCreate:
+      type: object
+      required: [internal_reference]
+      properties:
+        internal_reference:
+          type: string
+          description: Your platform's internal ID for this resident (not stored as PII)
+          example: RES-001
+        date_of_birth:
+          type: string
+          format: date
+          description: Used only for age-band analytics — never stored in logs
+          example: "1938-04-15"
+        diagnosis_codes:
+          type: array
+          description: ICD-10 or SNOMED codes (e.g. F00.1 = dementia in Alzheimer's)
+          items:
+            type: string
+          example: ["F00.1"]
+        baseline_window_days:
+          type: integer
+          minimum: 14
+          maximum: 90
+          default: 28
+          description: Rolling window (days) for baseline calculation
+          example: 28
+        risk_profile:
+          type: string
+          enum: [low, medium, high]
+          default: medium
+          description: Clinical risk profile — affects alert sensitivity
+          example: high
+        notes:
+          type: string
+          maxLength: 500
+          example: "History of recurrent UTIs. Baseline resets post-hospitalisation."
+
+    ResidentResponse:
+      type: object
+      properties:
+        resident_id:
+          type: string
+          example: res_7f3a9c21
+        internal_reference:
+          type: string
+          example: RES-001
+        baseline_status:
+          type: string
+          enum: [initialising, active, reset_pending, suspended]
+          example: active
+        baseline_window_days:
+          type: integer
+          example: 28
+        risk_profile:
+          type: string
+          enum: [low, medium, high]
+          example: high
+        diagnosis_codes:
+          type: array
+          items:
+            type: string
+          example: ["F00.1"]
+        total_observations:
+          type: integer
+          example: 187
+        min_observations_required:
+          type: integer
+          example: 14
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-01-10T09:00:00Z"
+        last_observation_at:
+          type: string
+          format: date-time
+          example: "2026-03-14T14:30:00Z"
+
+    BaselineSummary:
+      type: object
+      properties:
+        resident_id:
+          type: string
+          example: res_7f3a9c21
+        baseline_status:
+          type: string
+          enum: [initialising, active, reset_pending, suspended]
+        window_days:
+          type: integer
+          example: 28
+        window_start:
+          type: string
+          format: date-time
+        window_end:
+          type: string
+          format: date-time
+        total_observations_in_window:
+          type: integer
+          example: 84
+        signals:
+          type: object
+          description: Per-signal baseline statistics
+          additionalProperties:
+            type: object
+            properties:
+              mean:
+                type: number
+              std_dev:
+                type: number
+              most_common:
+                type: string
+              sample_count:
+                type: integer
+          example:
+            mood:
+              mean: 3.7
+              std_dev: 0.6
+              sample_count: 82
+            appetite:
+              most_common: good
+              sample_count: 79
+        last_calculated_at:
+          type: string
+          format: date-time
+
+    # ---------- Signals ----------
+    MoodSignal:
+      type: object
+      properties:
+        value:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: "1=very low, 3=neutral, 5=very positive"
+          example: 2
+        scale:
+          type: string
+          default: "1-5"
+        notes:
+          type: string
+          maxLength: 300
+          example: "Noticeably more agitated than usual this afternoon"
+
+    AppetiteSignal:
+      type: object
+      properties:
+        value:
+          type: string
+          enum: [excellent, good, fair, poor, refused]
+          example: poor
+        meal:
+          type: string
+          enum: [breakfast, lunch, dinner, snack]
+          example: lunch
+        fluid_intake_ml:
+          type: integer
+          minimum: 0
+          example: 120
+
+    SleepSignal:
+      type: object
+      properties:
+        value:
+          type: string
+          enum: [good, fair, disturbed, very_disturbed, unknown]
+          example: disturbed
+        night_wakings:
+          type: integer
+          minimum: 0
+          example: 4
+        hours_slept:
+          type: number
+          minimum: 0
+          maximum: 24
+          example: 4.5
+
+    SocialEngagementSignal:
+      type: object
+      properties:
+        value:
+          type: string
+          enum: [engaged, moderate, withdrawn, isolated]
+          example: withdrawn
+        activity_participated:
+          type: boolean
+          example: false
+        activity_name:
+          type: string
+          example: morning_exercise
+
+    PainIndicatorSignal:
+      type: object
+      properties:
+        facial_grimacing:
+          type: boolean
+          example: false
+        guarding:
+          type: boolean
+          example: false
+        vocalisation:
+          type: boolean
+          example: true
+        restlessness:
+          type: boolean
+          example: true
+        verbal_report:
+          type: boolean
+          example: false
+        painad_score:
+          type: integer
+          minimum: 0
+          maximum: 10
+          description: PAINAD scale score (optional, for clinical use)
+          example: 4
+
+    MobilitySignal:
+      type: object
+      properties:
+        value:
+          type: string
+          enum: [independent, supervised, assisted, dependent, bedbound]
+          example: assisted
+        baseline_comparison:
+          type: string
+          enum: [better_than_usual, same_as_usual, worse_than_usual, unknown]
+          example: worse_than_usual
+
+    AgitationSignal:
+      type: object
+      properties:
+        value:
+          type: string
+          enum: [calm, mild, moderate, severe]
+          example: moderate
+        type:
+          type: string
+          enum: [physical, verbal, wandering, sundowning, other]
+          example: sundowning
+
+    # ---------- Observation ----------
+    ObservationSignals:
+      type: object
+      description: At least one signal must be provided
+      minProperties: 1
+      properties:
+        mood:
+          $ref: '#/components/schemas/MoodSignal'
+        appetite:
+          $ref: '#/components/schemas/AppetiteSignal'
+        sleep_quality:
+          $ref: '#/components/schemas/SleepSignal'
+        social_engagement:
+          $ref: '#/components/schemas/SocialEngagementSignal'
+        pain_indicators:
+          $ref: '#/components/schemas/PainIndicatorSignal'
+        mobility:
+          $ref: '#/components/schemas/MobilitySignal'
+        agitation:
+          $ref: '#/components/schemas/AgitationSignal'
+
+    ObservationContext:
+      type: object
+      properties:
+        location:
+          type: string
+          example: bedroom
+        visitor_present:
+          type: boolean
+          example: false
+        medication_administered:
+          type: boolean
+          example: true
+        medication_notes:
+          type: string
+          maxLength: 200
+          example: Routine morning meds given
+        staff_id:
+          type: string
+          description: Anonymised staff reference (not stored in logs)
+          example: staff_42b
+
+    ObservationCreate:
+      type: object
+      required: [resident_id, observed_at, signals]
+      properties:
+        resident_id:
+          type: string
+          example: res_7f3a9c21
+        observed_at:
+          type: string
+          format: date-time
+          example: "2026-03-14T14:30:00Z"
+        observer_id:
+          type: string
+          description: Anonymised staff reference
+          example: staff_42b
+        signals:
+          $ref: '#/components/schemas/ObservationSignals'
+        context:
+          $ref: '#/components/schemas/ObservationContext'
+
+    DriftEvaluationResult:
+      type: object
+      properties:
+        triggered:
+          type: boolean
+          example: true
+        drift_score:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.67
+        baseline_status:
+          type: string
+          enum: [initialising, active, reset_pending, suspended]
+          example: active
+        signals_flagged:
+          type: array
+          items:
+            type: string
+          example: [mood, appetite, social_engagement]
+        alert_generated:
+          type: object
+          nullable: true
+          properties:
+            alert_id:
+              type: string
+              example: alr_3c8e1b90
+            tier:
+              type: string
+              enum: [T1, T2, T3, T4]
+              example: T2
+            tier_label:
+              type: string
+              example: Concern
+        message:
+          type: string
+          description: Human-readable status note (e.g. when baseline is initialising)
+          example: null
+
+    ObservationResponse:
+      type: object
+      properties:
+        observation_id:
+          type: string
+          example: obs_a9d2f1c3
+        resident_id:
+          type: string
+          example: res_7f3a9c21
+        processed_at:
+          type: string
+          format: date-time
+          example: "2026-03-14T14:30:04Z"
+        drift_evaluation:
+          $ref: '#/components/schemas/DriftEvaluationResult'
+        status:
+          type: string
+          enum: [processed, queued, failed]
+          example: processed
+
+    ObservationBatchRequest:
+      type: object
+      required: [observations]
+      properties:
+        observations:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ObservationCreate'
+
+    ObservationBatchResponse:
+      type: object
+      properties:
+        submitted: { type: integer, example: 10 }
+        processed: { type: integer, example: 9 }
+        failed: { type: integer, example: 1 }
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ObservationResponse'
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              index: { type: integer }
+              error: { type: string }
+              message: { type: string }
+
+    # ---------- Alert ----------
+    AlertSignalDetail:
+      type: object
+      properties:
+        signal:
+          type: string
+          example: mood
+        current_value:
+          example: 2
+        baseline_mean:
+          type: number
+          example: 3.7
+        baseline_std:
+          type: number
+          example: 0.6
+        z_score:
+          type: number
+          example: -2.83
+        deviation_days:
+          type: integer
+          example: 3
+
+    AlertExplanation:
+      type: object
+      properties:
+        summary:
+          type: string
+          example: "Resident is showing a sustained pattern change across 3 signals over the past 72 hours."
+        signals:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlertSignalDetail'
+        clinical_correlation:
+          type: object
+          properties:
+            pattern:
+              type: string
+              enum:
+                - early_infection_indicator
+                - uti_precursor
+                - respiratory_precursor
+                - psychological_decline
+                - positive_improvement
+                - medication_side_effect
+                - environmental_trigger
+                - unknown
+              example: early_infection_indicator
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+              example: 0.63
+            suggested_actions:
+              type: array
+              items:
+                type: string
+              example:
+                - Check fluid intake over past 48 hours
+                - Observe for UTI indicators
+                - Consider requesting urine dipstick test
+                - Notify responsible clinical lead
+
+    AlertResponse:
+      type: object
+      properties:
+        alert_id:
+          type: string
+          example: alr_3c8e1b90
+        resident_id:
+          type: string
+          example: res_7f3a9c21
+        generated_at:
+          type: string
+          format: date-time
+        tier:
+          type: string
+          enum: [T1, T2, T3, T4]
+          example: T2
+        tier_label:
+          type: string
+          enum: [Watch, Concern, Alert, Critical]
+          example: Concern
+        confidence_score:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.74
+        drift_score:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.67
+        explanation:
+          $ref: '#/components/schemas/AlertExplanation'
+        historical_context:
+          type: object
+          properties:
+            previous_episode_date:
+              type: string
+              format: date
+              nullable: true
+              example: "2025-11-03"
+            pre_episode_pattern_match_score:
+              type: number
+              nullable: true
+              example: 0.81
+        metadata:
+          type: object
+          properties:
+            acknowledged:
+              type: boolean
+              example: false
+            acknowledged_by:
+              type: string
+              nullable: true
+            acknowledged_at:
+              type: string
+              format: date-time
+              nullable: true
+            action_taken:
+              type: string
+              nullable: true
+            dismissed:
+              type: boolean
+              example: false
+
+    AlertAcknowledge:
+      type: object
+      required: [action_taken]
+      properties:
+        action_taken:
+          type: string
+          maxLength: 500
+          example: "Requested urine dipstick test. GP notified. Monitoring fluid intake."
+        actioned_by:
+          type: string
+          example: nurse_jane_doe
+
+    AlertDismiss:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          maxLength: 300
+          example: "Alert reviewed — resident attended hospital appointment, explaining presentation change."
+        dismissed_by:
+          type: string
+          example: staff_42b
+
+    # ---------- Analytics ----------
+    PopulationRiskResponse:
+      type: object
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        location:
+          type: string
+          nullable: true
+          example: main_building
+        total_residents:
+          type: integer
+          example: 42
+        risk_distribution:
+          type: object
+          properties:
+            stable:     { type: integer, example: 31 }
+            watch_t1:   { type: integer, example: 6 }
+            concern_t2: { type: integer, example: 4 }
+            alert_t3:   { type: integer, example: 1 }
+            critical_t4: { type: integer, example: 0 }
+        trending_signals:
+          type: array
+          items:
+            type: string
+          example: [mood, sleep_quality]
+        active_alerts:
+          type: array
+          items:
+            type: object
+            properties:
+              resident_id: { type: string }
+              tier:         { type: string }
+              primary_signals:
+                type: array
+                items:
+                  type: string
+
+    ResidentTrendResponse:
+      type: object
+      properties:
+        resident_id:
+          type: string
+          example: res_7f3a9c21
+        period_start:
+          type: string
+          format: date-time
+        period_end:
+          type: string
+          format: date-time
+        data_points:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              drift_score:
+                type: number
+              signals:
+                type: object
+                additionalProperties:
+                  type: number
+              alert_tier:
+                type: string
+                nullable: true
+                enum: [T1, T2, T3, T4, null]
+
+    # ---------- Webhooks ----------
+    WebhookCreate:
+      type: object
+      required: [url, events]
+      properties:
+        url:
+          type: string
+          format: uri
+          example: https://your-platform.com/webhooks/behavedrift
+        events:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum:
+              - alert.created
+              - alert.tier_escalated
+              - alert.acknowledged
+              - alert.resolved
+              - baseline.updated
+              - resident.risk_status_changed
+          example: [alert.created, alert.tier_escalated]
+        description:
+          type: string
+          example: Nourish integration endpoint
+        active:
+          type: boolean
+          default: true
+        min_tier:
+          type: string
+          enum: [T1, T2, T3, T4]
+          default: T1
+          description: Only send alerts at or above this tier
+
+    WebhookResponse:
+      type: object
+      properties:
+        webhook_id:
+          type: string
+          example: wh_a1b2c3d4
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        signing_secret:
+          type: string
+          description: Returned only on creation — store securely, not shown again
+          example: whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        created_at:
+          type: string
+          format: date-time
+        last_triggered_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ---------- Auth ----------
+    TokenRequest:
+      type: object
+      required: [grant_type, client_id, client_secret]
+      properties:
+        grant_type:
+          type: string
+          enum: [client_credentials]
+        client_id:
+          type: string
+          example: ten_abc123_client
+        client_secret:
+          type: string
+          example: cs_xxxxxxxxxxxxxxxxxxxx
+        scope:
+          type: string
+          example: "behavedrift:read behavedrift:write"
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum: [Bearer]
+        expires_in:
+          type: integer
+          example: 3600
+        scope:
+          type: string
+          example: "behavedrift:read behavedrift:write"
+
+    TenantCreate:
+      type: object
+      required: [organisation_name, contact_email]
+      properties:
+        organisation_name:
+          type: string
+          example: Sunrise Care Home
+        contact_email:
+          type: string
+          format: email
+          example: admin@sunrisecare.co.uk
+        plan:
+          type: string
+          enum: [self_hosted, starter, enterprise]
+          default: self_hosted
+
+    TenantResponse:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          example: ten_abc123
+        organisation_name:
+          type: string
+        client_id:
+          type: string
+          example: ten_abc123_client
+        client_secret:
+          type: string
+          description: Shown only on creation — store securely
+          example: cs_xxxxxxxxxxxxxxxxxxxx
+        api_key:
+          type: string
+          description: API Key alternative — shown only on creation
+          example: bda_sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        message:
+          type: string
+          example: "Store the client_secret and api_key securely — they will not be shown again."
+
+  # ============================================================
+  # SHARED RESPONSE OBJECTS
+  # ============================================================
+  responses:
+    Unauthorized:
+      description: Authentication required or token expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: authentication_required
+            message: A valid Bearer token or X-API-Key header is required.
+            code: 401
+            request_id: req_abc123
+
+    Forbidden:
+      description: Authenticated but insufficient scope
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: forbidden
+            message: Your token does not have the required scope.
+            code: 403
+            request_id: req_abc123
+
+    NotFound:
+      description: Resource not found (or belongs to another tenant)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: not_found
+            message: The requested resource does not exist.
+            code: 404
+            request_id: req_abc123
+
+    UnprocessableEntity:
+      description: Request body failed schema validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: validation_error
+            message: "Field 'resident_id' is required."
+            code: 422
+            details:
+              - field: resident_id
+                issue: required
+                value: null
+            request_id: req_abc123
+
+    RateLimited:
+      description: Too many requests
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retrying
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: rate_limit_exceeded
+            message: You have exceeded 300 requests per minute. Retry after 30 seconds.
+            code: 429
+            request_id: req_abc123
+
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: internal_error
+            message: An unexpected error occurred. The request_id has been logged.
+            code: 500
+            request_id: req_abc123
+
+# ============================================================
+# SECURITY (applied globally by default)
+# ============================================================
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+# ============================================================
+# PATHS
+# ============================================================
+paths:
+
+  # ---- Health ----
+  /health:
+    get:
+      tags: [Health]
+      summary: Service health check
+      description: Returns service and dependency health. No authentication required.
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, unhealthy]
+                    example: healthy
+                  version:
+                    type: string
+                    example: 1.0.0
+                  database:
+                    type: string
+                    enum: [connected, disconnected]
+                    example: connected
+                  redis:
+                    type: string
+                    enum: [connected, disconnected]
+                    example: connected
+                  uptime_seconds:
+                    type: integer
+                    example: 84320
+        '503':
+          description: Service unavailable
+
+  # ---- Auth ----
+  /v1/auth/token:
+    post:
+      tags: [Auth]
+      summary: Issue OAuth2 access token
+      description: Exchange client credentials for a short-lived JWT access token (60 min).
+      operationId: issueToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+      responses:
+        '200':
+          description: Token issued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid client credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: invalid_credentials
+                message: client_id or client_secret is incorrect.
+                code: 401
+                request_id: req_abc123
+
+  /v1/auth/tenants:
+    post:
+      tags: [Auth]
+      summary: Provision a new tenant
+      description: |
+        Creates a new organisation tenant and returns credentials.
+        **The client_secret and api_key are shown only once — store them immediately.**
+
+        For self-hosted deployments this endpoint is open.
+        For cloud-hosted, requires an admin token.
+      operationId: createTenant
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantCreate'
+      responses:
+        '201':
+          description: Tenant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+        '409':
+          description: Organisation name already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  # ---- Residents ----
+  /v1/residents:
+    post:
+      tags: [Residents]
+      summary: Register a resident
+      description: Registers a new resident and initialises their baseline profile.
+      operationId: createResident
+      security:
+        - BearerAuth: [behavedrift:write]
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResidentCreate'
+      responses:
+        '201':
+          description: Resident registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResidentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: internal_reference already registered for this tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: conflict
+                message: A resident with internal_reference 'RES-001' already exists.
+                code: 409
+                request_id: req_abc123
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      tags: [Residents]
+      summary: List residents
+      description: Returns a paginated list of all residents registered for the tenant.
+      operationId: listResidents
+      security:
+        - BearerAuth: [behavedrift:read]
+        - ApiKeyAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+        - name: baseline_status
+          in: query
+          schema:
+            type: string
+            enum: [initialising, active, reset_pending, suspended]
+        - name: risk_profile
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high]
+      responses:
+        '200':
+          description: Paginated list of residents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  residents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ResidentResponse'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/residents/{resident_id}:
+    parameters:
+      - name: resident_id
+        in: path
+        required: true
+        schema:
+          type: string
+        example: res_7f3a9c21
+
+    get:
+      tags: [Residents]
+      summary: Get a resident
+      operationId: getResident
+      security:
+        - BearerAuth: [behavedrift:read]
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Resident details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResidentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Residents]
+      summary: Delete a resident (GDPR erasure)
+      description: |
+        Permanently deletes all resident data. This satisfies UK GDPR Article 17.
+        A verifiable deletion certificate is returned.
+        **This action is irreversible.**
+      operationId: deleteResident
+      security:
+        - BearerAuth: [behavedrift:admin]
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Resident data erased
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted_resident_id: { type: string }
+                  certificate_id: { type: string }
+                  deleted_at: { type: string, format: date-time }
+                  records_deleted:
+                    type: object
+                    properties:
+                      observations: { type: integer }
+                      alerts: { type: integer }
+                      baseline_snapshots: { type: integer }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/residents/{resident_id}/baseline:
+    parameters:
+      - name: resident_id
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      tags: [Residents]
+      summary: Get resident baseline
+      description: Returns the current baseline model for a resident.
+      operationId: getBaseline
+      security:
+        - BearerAuth: [behavedrift:read]
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Baseline model summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaselineSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/residents/{resident_id}/baseline/reset:
+    parameters:
+      - name: resident_id
+        in: path
+        required: true
+        schema:
+          type: string
+
+    put:
+      tags: [Residents]
+      summary: Reset resident baseline
+      description: |
+        Discards the current baseline and starts a fresh accumulation window.
+        Use this after a hospitalisation, significant care plan change, or medication review.
+      operationId: resetBaseline
+      security:
+        - BearerAuth: [behavedrift:write]
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  enum:
+                    - post_hospitalisation
+                    - medication_change
+                    - care_plan_change
+                    - clinical_review
+                    - other
+                  example: post_hospitalisation
+                notes:
+                  type: string
+                  maxLength: 300
+                  example: Returned from 5-day hospital stay. New medication prescribed.
+      responses:
+        '200':
+          description: Baseline reset initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resident_id: { type: string }
+                  baseline_status:
+                    type: string
+                    example: initialising
+                  reset_at: { type: string, format: date-time }
+                  min_observations_required: { type: integer, example: 14 }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ---- Observations ----
+  /v1/observations:
+    post:
+      tags: [Observations]
+      summary: Submit a single observation
+      description: |
+        Submit one behavioural observation for a resident.
+        The drift engine evaluates it immediately and returns a score.
+        If the drift score exceeds the configured threshold, an alert is generated.
+      operationId: createObservation
+      security:
+        - BearerAuth: [behavedrift:write]
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObservationCreate'
+      responses:
+        '201':
+          description: Observation processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObservationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: resident_id not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/observations/batch:
+    post:
+      tags: [Observations]
+      summary: Submit a batch of observations
+      description: |
+        Submit up to 100 observations in a single request.
+        Useful for bulk backfill or syncing from another system.
+        Each observation is processed independently — partial success is possible.
+      operationId: createObservationBatch
+      security:
+        - BearerAuth: [behavedrift:write]
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObservationBatchRequest'
+      responses:
+        '200':
+          description: Batch processed (check `errors` array for individual failures)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObservationBatchResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /v1/observations/fhir:
+    post:
+      tags: [Observations]
+      summary: Submit a FHIR R4 Observation
+      description: |
+        Accept a FHIR R4 Observation resource directly.
+        BehaveDrift maps it to the internal signal schema automatically.
+        Supported SNOMED codes map to BehaveDrift signals — see docs/fhir-mapping.md.
+      operationId: createFhirObservation
+      security:
+        - BearerAuth: [behavedrift:write]
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/fhir+json:
+            schema:
+              type: object
+              description: A valid FHIR R4 Observation resource
+              required: [resourceType, status, code, subject, effective]
+              properties:
+                resourceType:
+                  type: string
+                  enum: [Observation]
+                status:
+                  type: string
+                  enum: [final, amended, preliminary]
+                code:
+                  type: object
+                  description: SNOMED CT coded observation type
+                subject:
+                  type: object
+                  description: Reference to Patient (resident_id)
+                effective:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: FHIR Observation processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObservationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: FHIR resource invalid or SNOMED code unmapped
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/observations/{resident_id}:
+    get:
+      tags: [Observations]
+      summary: Get observation history for a resident
+      operationId: getObservations
+      security:
+        - BearerAuth: [behavedrift:read]
+        - ApiKeyAuth: []
+      parameters:
+        - name: resident_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: signal
+          in: query
+          description: Filter to a specific signal type
+          schema:
+            type: string
+            enum: [mood, appetite, sleep_quality, social_engagement, pain_indicators, mobility, agitation]
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, default: 50, maximum: 200 }
+      responses:
+        '200':
+          description: Paginated observation history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resident_id: { type: string }
+                  observations:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/ObservationCreate'
+                        - type: object
+                          properties:
+                            observation_id: { type: string }
+                            processed_at: { type: string, format: date-time }
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ---- Alerts ----
+  /v1/alerts:
+    get:
+      tags: [Alerts]
+      summary: List all active alerts
+      description: Returns all active (non-dismissed) drift alerts for the tenant.
+      operationId: listAlerts
+      security:
+        - BearerAuth: [behavedrift:read]
+        - ApiKeyAuth: []
+      parameters:
+        - name: tier
+          in: query
+          description: Filter by minimum alert tier
+          schema:
+            type: string
+            enum: [T1, T2, T3, T4]
+        - name: acknowledged
+          in: query
+          schema: { type: boolean }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: Active alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AlertResponse'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/alerts/{resident_id}:
+    get:
+      tags: [Alerts]
+      summary: Get alerts for a resident
+      operationId: getResidentAlerts
+      security:
+        - BearerAuth: [behavedrift:read]
+        - ApiKeyAuth: []
+      parameters:
+        - name: resident_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: include_dismissed
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Resident alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resident_id: { type: string }
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AlertResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/alerts/detail/{alert_id}:
+    get:
+      tags: [Alerts]
+      summary: Get a specific alert with full explanation
+      operationId: getAlert
+      security:
+        - BearerAuth: [behavedrift:read]
+        - ApiKeyAuth: []
+      parameters:
+        - name: alert_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Full alert detail with explanation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/alerts/{alert_id}/acknowledge:
+    post:
+      tags: [Alerts]
+      summary: Acknowledge an alert
+      description: Log that an alert has been reviewed and an action has been taken.
+      operationId: acknowledgeAlert
+      security:
+        - BearerAuth: [behavedrift:write]
+        - ApiKeyAuth: []
+      parameters:
+        - name: alert_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertAcknowledge'
+      responses:
+        '200':
+          description: Alert acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Alert already acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/alerts/{alert_id}:
+    delete:
+      tags: [Alerts]
+      summary: Dismiss an alert
+      description: Dismiss an alert with a documented reason. Dismissed alerts are retained in audit log.
+      operationId: dismissAlert
+      security:
+        - BearerAuth: [behavedrift:write]
+        - ApiKeyAuth: []
+      parameters:
+        - name: alert_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertDismiss'
+      responses:
+        '200':
+          description: Alert dismissed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alert_id: { type: string }
+                  dismissed: { type: boolean, example: true }
+                  dismissed_at: { type: string, format: date-time }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ---- Analytics ----
+  /v1/analytics/population:
+    get:
+      tags: [Analytics]
+      summary: Population-level risk distribution
+      description: Returns risk distribution and active alerts across all residents for the tenant.
+      operationId: getPopulationRisk
+      security:
+        - BearerAuth: [behavedrift:read]
+        - ApiKeyAuth: []
+      parameters:
+        - name: location
+          in: query
+          description: Filter by care home location or wing
+          schema: { type: string }
+        - name: date
+          in: query
+          description: Snapshot date (defaults to today)
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Population risk overview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PopulationRiskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/analytics/trends/{resident_id}:
+    get:
+      tags: [Analytics]
+      summary: Longitudinal drift trend for a resident
+      description: Returns time-series drift scores for a resident over the specified period.
+      operationId: getResidentTrend
+      security:
+        - BearerAuth: [behavedrift:read]
+        - ApiKeyAuth: []
+      parameters:
+        - name: resident_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: days
+          in: query
+          description: Number of days to look back (default 30, max 365)
+          schema: { type: integer, default: 30, minimum: 7, maximum: 365 }
+      responses:
+        '200':
+          description: Longitudinal trend data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResidentTrendResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/analytics/export:
+    get:
+      tags: [Analytics]
+      summary: Export a report
+      description: Export observation, alert, or trend data as PDF, CSV, or FHIR Bundle.
+      operationId: exportReport
+      security:
+        - BearerAuth: [behavedrift:read]
+        - ApiKeyAuth: []
+      parameters:
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [pdf, csv, fhir_bundle]
+        - name: resident_id
+          in: query
+          description: Export for a specific resident (omit for full tenant export)
+          schema: { type: string }
+        - name: start_date
+          in: query
+          schema: { type: string, format: date }
+        - name: end_date
+          in: query
+          schema: { type: string, format: date }
+        - name: include_alerts
+          in: query
+          schema: { type: boolean, default: true }
+        - name: include_observations
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Report file
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+            text/csv:
+              schema: { type: string }
+            application/fhir+json:
+              schema:
+                type: object
+                description: FHIR R4 Bundle
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  # ---- Webhooks ----
+  /v1/webhooks:
+    post:
+      tags: [Webhooks]
+      summary: Register a webhook
+      description: |
+        Register an endpoint to receive BehaveDrift events.
+        All events are signed with HMAC-SHA256 using the returned `signing_secret`.
+        **The signing_secret is shown only once — store it immediately.**
+      operationId: createWebhook
+      security:
+        - BearerAuth: [behavedrift:admin]
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookCreate'
+      responses:
+        '201':
+          description: Webhook registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+    get:
+      tags: [Webhooks]
+      summary: List registered webhooks
+      operationId: listWebhooks
+      security:
+        - BearerAuth: [behavedrift:admin]
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of registered webhooks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhooks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WebhookResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/webhooks/{webhook_id}:
+    delete:
+      tags: [Webhooks]
+      summary: Remove a webhook
+      operationId: deleteWebhook
+      security:
+        - BearerAuth: [behavedrift:admin]
+        - ApiKeyAuth: []
+      parameters:
+        - name: webhook_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Webhook removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
