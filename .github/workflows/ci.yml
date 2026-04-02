@@ -122,14 +122,14 @@ jobs:
         run: python -m alembic upgrade head
 
       - name: Run unit tests
-        run: pytest tests/unit/ -v --tb=short
+        run: python -m pytest tests/unit/ -v --tb=short
 
       - name: Run integration tests
-        run: pytest tests/integration/ -v --tb=short || true
+        run: python -m pytest tests/integration/ -v --tb=short || true
 
       - name: Check coverage threshold
         run: |
-          pytest tests/ \
+          python -m pytest tests/ \
             --cov=app \
             --cov-report=xml \
             --cov-report=term-missing \
