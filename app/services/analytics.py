@@ -29,7 +29,7 @@ async def calculate_population_risk(
     # Fetch active alerts (non-dismissed)
     alerts_q = select(Alert).where(
         Alert.tenant_id == tenant_id,
-        Alert.dismissed == False,
+        Alert.dismissed.is_(False),
     )
     alert_result = await db.execute(alerts_q)
     active_alerts = alert_result.scalars().all()

@@ -3,7 +3,6 @@ Unit tests — Drift Engine
 Tests the core scoring algorithm without any DB interaction.
 """
 
-import pytest
 from app.services.drift_engine import evaluate_drift, _classify_tier, _signal_to_numeric
 
 

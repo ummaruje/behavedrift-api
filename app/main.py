@@ -4,11 +4,10 @@ BehaveDrift API — FastAPI Application Entry Point
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.exceptions import (
@@ -107,7 +106,6 @@ if settings.is_production:
 
 app.add_exception_handler(BehaveDriftError, behavedrift_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
-from fastapi import HTTPException
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
 

@@ -10,7 +10,7 @@ All auth is tenant-scoped. A valid token always resolves to a Tenant.
 
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, Security, status
+from fastapi import Depends, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select

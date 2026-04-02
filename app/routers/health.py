@@ -37,7 +37,6 @@ async def health_check():
 
     overall = "healthy" if db_status == "connected" and redis_status == "connected" else "degraded"
 
-    import time
     return {
         "status": overall,
         "version": "1.0.0",

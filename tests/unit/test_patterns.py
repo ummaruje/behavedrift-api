@@ -2,7 +2,6 @@
 Unit tests — Clinical Pattern Matching
 """
 
-import pytest
 from app.patterns.infection_patterns import match_clinical_pattern
 
 

@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from app.auth.dependencies import get_current_tenant
 from app.database import get_db
-from app.exceptions import NotFoundError, ValidationError
+from app.exceptions import NotFoundError
 from app.models.observation import Observation
 from app.models.resident import Resident
 from app.models.alert import Alert
@@ -22,6 +22,7 @@ from app.schemas.observation import (
 )
 from app.services.drift_engine import evaluate_drift
 from app.services.baseline import should_recalculate, update_resident_baseline
+from app.services.fhir_mapper import parse_fhir_observation
 
 router = APIRouter(prefix="/v1/observations", tags=["Observations"])
 
@@ -85,7 +86,6 @@ async def _process_single_observation(
     # Generate alert if drift triggered
     alert_summary = None
     if evaluation.triggered and evaluation.tier:
-        tier_labels = {"T1": "Watch", "T2": "Concern", "T3": "Alert", "T4": "Critical"}
         explanation = {
             "summary": _build_explanation_summary(evaluation),
             "signals": [
@@ -190,8 +190,6 @@ async def create_observation_batch(
 
 # ---- FHIR R4 Observation ingestion ----
 
-from app.services.fhir_mapper import parse_fhir_observation
-
 @router.post("/fhir", status_code=status.HTTP_201_CREATED)
 async def create_fhir_observation(
     fhir_resource: dict,
@@ -265,7 +263,7 @@ async def get_observation_history(
     from sqlalchemy import func as sqla_func
 
     # Verify resident exists
-    resident = await _get_resident_or_404(resident_id, tenant, db)
+    await _get_resident_or_404(resident_id, tenant, db)
 
     q = select(Observation).where(
         Observation.resident_id == resident_id,

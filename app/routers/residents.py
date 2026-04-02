@@ -20,7 +20,6 @@ from app.schemas.resident import (
     BaselineReset,
     ResidentList,
 )
-from app.services.baseline import update_resident_baseline
 from datetime import datetime, timezone
 
 router = APIRouter(prefix="/v1/residents", tags=["Residents"])

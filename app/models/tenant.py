@@ -1,7 +1,7 @@
 """Tenant ORM model — one row per care organisation."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy import String, DateTime, Boolean, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base

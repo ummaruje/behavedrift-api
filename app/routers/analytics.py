@@ -1,30 +1,22 @@
 """Router: /v1/analytics — population-level analytics, trends, and export."""
 
-import csv
-import io
-from datetime import datetime, date, timedelta, timezone
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, case, cast, Date
 
 from app.auth.dependencies import get_current_tenant
 from app.database import get_db
-from app.exceptions import NotFoundError, ValidationError
-from app.models.resident import Resident
-from app.models.observation import Observation
-from app.models.alert import Alert
 from app.models.tenant import Tenant
 from app.schemas.analytics import PopulationRiskResponse, ResidentTrendResponse
+from app.services.analytics import calculate_population_risk, calculate_resident_trend, generate_export_csv
 
 router = APIRouter(prefix="/v1/analytics", tags=["Analytics"])
 
 
 # ---- Population-level risk distribution ----
-
-from app.services.analytics import calculate_population_risk, calculate_resident_trend, generate_export_csv
 
 @router.get("/population", response_model=PopulationRiskResponse)
 async def get_population_risk(

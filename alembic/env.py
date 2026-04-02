@@ -4,6 +4,7 @@ Imports all models so that autogenerate can detect schema changes.
 """
 
 import asyncio
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -25,7 +26,7 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = settings.database_url
+    url = os.getenv("DATABASE_URL", settings.database_url)
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -47,7 +48,8 @@ def do_run_migrations(connection):
 
 
 async def run_async_migrations() -> None:
-    engine = create_async_engine(settings.database_url, echo=False)
+    url = os.getenv("DATABASE_URL", settings.database_url)
+    engine = create_async_engine(url, echo=False)
     async with engine.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await engine.dispose()

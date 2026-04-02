@@ -16,10 +16,10 @@ from app.database import AsyncSessionLocal
 from app.models.webhook import Webhook
 from app.config import get_settings
 import ulid
+import structlog
 
 settings = get_settings()
 
-import structlog
 logger = structlog.get_logger("behavedrift.webhooks")
 
 def generate_signature(payload_bytes: bytes, secret: str) -> str:
@@ -38,7 +38,7 @@ async def dispatch_webhook_event(tenant_id: str, event_type: str, data: Dict[str
     async with AsyncSessionLocal() as session:
         stmt = select(Webhook).where(
             Webhook.tenant_id == tenant_id,
-            Webhook.active == True
+            Webhook.active.is_(True)
         )
         result = await session.execute(stmt)
         webhooks = result.scalars().all()

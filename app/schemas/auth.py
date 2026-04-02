@@ -1,6 +1,6 @@
 """Pydantic schemas for authentication and tenant provisioning."""
 
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 
 
 class TokenRequest(BaseModel):

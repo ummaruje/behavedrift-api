@@ -1,7 +1,6 @@
 """Router: /v1/webhooks — webhook endpoint registration and management."""
 
 import secrets
-import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
@@ -9,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.auth.dependencies import get_current_tenant
-from app.auth.hashing import hash_secret
 from app.database import get_db
 from app.exceptions import NotFoundError, ValidationError
 from app.models.webhook import Webhook
