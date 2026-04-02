@@ -204,7 +204,7 @@ jobs:
       - name: Start API server
         run: |
           python -m alembic upgrade head
-          python -m pytest tests/fixtures/seed_contract_data.py
+          python tests/fixtures/seed_contract_data.py
           uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           sleep 5
           curl --fail http://localhost:8000/health
