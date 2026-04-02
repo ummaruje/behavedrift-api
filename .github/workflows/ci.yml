@@ -214,7 +214,8 @@ jobs:
           schemathesis run docs/openapi.yaml \
             --base-url http://localhost:8000 \
             --checks all \
-            --hypothesis-max-examples 50
+            --hypothesis-max-examples 50 \
+            --experimental=openapi-3.1
 
   # ============================================================
   # Stage 5: Security Scan
