@@ -90,6 +90,14 @@ class Settings(BaseSettings):
             raise ValueError("Drift threshold must be between 0.0 and 1.0")
         return float(v)
 
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def validate_database_url(cls, v: str) -> str:
+        """Ensure postgresql+asyncpg:// for async engines."""
+        if v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"

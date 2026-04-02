@@ -26,9 +26,8 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = os.getenv("DATABASE_URL", settings.database_url)
     context.configure(
-        url=url,
+        url=settings.database_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -48,11 +47,7 @@ def do_run_migrations(connection):
 
 
 async def run_async_migrations() -> None:
-    raw_url = os.getenv("DATABASE_URL", settings.database_url)
-    # Ensure async driver for async engine
-    if raw_url.startswith("postgresql://"):
-        raw_url = raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    engine = create_async_engine(raw_url, echo=False)
+    engine = create_async_engine(settings.database_url, echo=False)
     async with engine.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await engine.dispose()
