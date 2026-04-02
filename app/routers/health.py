@@ -35,7 +35,11 @@ async def health_check():
     except Exception:
         pass
 
-    overall = "healthy" if db_status == "connected" and redis_status == "connected" else "degraded"
+    overall = (
+        "healthy"
+        if db_status == "connected" and redis_status == "connected"
+        else "degraded"
+    )
 
     return {
         "status": overall,

@@ -43,15 +43,19 @@ async def build_baseline(
         Baseline dict (to be stored in resident.baseline_data), or None
         if there are insufficient observations.
     """
-    window_start = datetime.now(timezone.utc) - timedelta(days=resident.baseline_window_days)
+    window_start = datetime.now(timezone.utc) - timedelta(
+        days=resident.baseline_window_days
+    )
 
     result = await db.execute(
-        select(Observation).where(
+        select(Observation)
+        .where(
             and_(
                 Observation.resident_id == resident.id,
                 Observation.observed_at >= window_start,
             )
-        ).order_by(Observation.observed_at.asc())
+        )
+        .order_by(Observation.observed_at.asc())
     )
     observations = result.scalars().all()
 
@@ -115,9 +119,10 @@ def _weighted_std(values: list[float], weight_factor: float = 1.5) -> float:
     total_weight = sum(weights)
 
     weighted_mean = sum(w * v for w, v in zip(weights, values)) / total_weight
-    variance = sum(
-        w * (v - weighted_mean) ** 2 for w, v in zip(weights, values)
-    ) / total_weight
+    variance = (
+        sum(w * (v - weighted_mean) ** 2 for w, v in zip(weights, values))
+        / total_weight
+    )
 
     return math.sqrt(variance)
 

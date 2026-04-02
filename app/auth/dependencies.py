@@ -41,7 +41,7 @@ async def _get_tenant_by_token(
         return None
 
     result = await db.execute(
-        select(Tenant).where(Tenant.id == tenant_id, Tenant.is_active == True)  # noqa: E712
+        select(Tenant).where(Tenant.id == tenant_id, Tenant.is_active.is_(True))
     )
     return result.scalar_one_or_none()
 
@@ -58,7 +58,7 @@ async def _get_tenant_by_api_key(
     # In production, prefix lookup (first 8 chars) reduces DB scan
     result = await db.execute(
         select(Tenant).where(
-            Tenant.is_active == True,  # noqa: E712
+            Tenant.is_active.is_(True),
             Tenant.api_key_hash.isnot(None),
         )
     )
@@ -70,7 +70,9 @@ async def _get_tenant_by_api_key(
 
 
 async def get_current_tenant(
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)],
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)
+    ],
     x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
     db: AsyncSession = Depends(get_db),
 ) -> Tenant:
@@ -82,8 +84,10 @@ async def get_current_tenant(
     if not tenant:
         tenant = await _get_tenant_by_api_key(x_api_key, db)
     if not tenant:
-        raise AuthenticationError("A valid Bearer token or X-API-Key header is required.")
-        
+        raise AuthenticationError(
+            "A valid Bearer token or X-API-Key header is required."
+        )
+
     structlog.contextvars.bind_contextvars(tenant_id=tenant.id)
     return tenant
 
@@ -93,12 +97,16 @@ def require_scope(scope: str):
     Dependency factory — verifies the current token includes a specific scope.
     Only applies to JWT tokens (API Keys get full access within tenant).
     """
+
     def _check(
-        credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)],
+        credentials: Annotated[
+            HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)
+        ],
         tenant: Annotated[Tenant, Depends(get_current_tenant)],
     ) -> Tenant:
         if credentials:
             from app.auth.jwt import verify_token
+
             payload = verify_token(credentials.credentials)
             granted_scopes = payload.get("scopes", [])
             if scope not in granted_scopes:

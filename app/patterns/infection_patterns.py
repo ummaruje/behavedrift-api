@@ -71,7 +71,7 @@ _PATTERNS = [
     },
     {
         "pattern": "positive_improvement",
-        "required_signals": set(),       # handled separately
+        "required_signals": set(),  # handled separately
         "supporting_signals": set(),
         "confidence_base": 0.0,
         "suggested_actions": [],
@@ -101,13 +101,13 @@ def match_clinical_pattern(
             continue
 
         # Only match if ALL required signals are flagged
-        if not required.issubset(flagged_set):
+        if not required.issubset(flagged_set):  # type: ignore[attr-defined]
             continue
 
         # Confidence boost for supporting signals
-        supporting_matches = len(supporting.intersection(flagged_set))
+        supporting_matches = len(supporting.intersection(flagged_set))  # type: ignore[attr-defined]
         confidence_boost = supporting_matches * 0.05
-        confidence = min(pattern_def["confidence_base"] + confidence_boost, 0.95)
+        confidence = min(pattern_def["confidence_base"] + confidence_boost, 0.95)  # type: ignore[operator]
 
         if confidence > best_confidence:
             best_confidence = confidence

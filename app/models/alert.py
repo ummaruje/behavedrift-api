@@ -1,10 +1,26 @@
 """Alert ORM model — drift alert with tier, explanation, and audit trail."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from sqlalchemy import String, DateTime, Float, JSON, Boolean, Text, ForeignKey, func, Index
+from typing import TYPE_CHECKING
+from sqlalchemy import (
+    String,
+    DateTime,
+    Float,
+    JSON,
+    Boolean,
+    Text,
+    ForeignKey,
+    func,
+    Index,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.resident import Resident
 
 
 class Alert(Base):
@@ -23,7 +39,7 @@ class Alert(Base):
     tenant_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
 
     # Tier classification
-    tier: Mapped[str] = mapped_column(String(4), nullable=False)     # T1 | T2 | T3 | T4
+    tier: Mapped[str] = mapped_column(String(4), nullable=False)  # T1 | T2 | T3 | T4
     tier_label: Mapped[str] = mapped_column(String(20), nullable=False)
 
     # Scores
@@ -36,12 +52,16 @@ class Alert(Base):
 
     # Audit fields
     dismissed: Mapped[bool] = mapped_column(Boolean, default=False)
-    dismissed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dismissed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     dismissed_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     dismiss_reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
 
     acknowledged: Mapped[bool] = mapped_column(Boolean, default=False)
-    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     acknowledged_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     action_taken: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -50,14 +70,16 @@ class Alert(Base):
     )
 
     # Relationship
-    resident: Mapped["Resident"] = relationship("Resident", back_populates="alerts")  # noqa: F821
+    resident: Mapped[Resident] = relationship("Resident", back_populates="alerts")
 
     @property
     def metadata_dict(self) -> dict:
         return {
             "acknowledged": self.acknowledged,
             "acknowledged_by": self.acknowledged_by,
-            "acknowledged_at": self.acknowledged_at.isoformat() if self.acknowledged_at else None,
+            "acknowledged_at": (
+                self.acknowledged_at.isoformat() if self.acknowledged_at else None
+            ),
             "action_taken": self.action_taken,
             "dismissed": self.dismissed,
         }

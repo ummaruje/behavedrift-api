@@ -22,6 +22,7 @@ router = APIRouter(prefix="/v1/auth", tags=["Auth"])
 
 # ---- Token issuance (OAuth2 Client Credentials) ----
 
+
 @router.post("/token", response_model=TokenResponse)
 async def issue_token(
     grant_type: Annotated[str, Form()],
@@ -54,7 +55,9 @@ async def issue_token(
         raise InvalidCredentialsError("client_id or client_secret is incorrect.")
 
     # Determine granted scopes
-    requested_scopes = scope.split() if scope else ["behavedrift:read", "behavedrift:write"]
+    requested_scopes = (
+        scope.split() if scope else ["behavedrift:read", "behavedrift:write"]
+    )
     granted_scopes = requested_scopes
 
     # Issue JWT
@@ -74,7 +77,10 @@ async def issue_token(
 
 # ---- Tenant provisioning ----
 
-@router.post("/tenants", response_model=TenantResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/tenants", response_model=TenantResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_tenant(
     payload: TenantCreate,
     db: AsyncSession = Depends(get_db),

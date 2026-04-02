@@ -31,7 +31,9 @@ def create_access_token(
         expires_delta: Token lifetime. Defaults to settings value.
     """
     now = datetime.now(timezone.utc)
-    expires = now + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
+    expires = now + (
+        expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
+    )
     payload: dict[str, Any] = {
         "sub": subject,
         "tenant_id": tenant_id,
@@ -40,7 +42,9 @@ def create_access_token(
         "exp": expires,
         "iss": "behavedrift-api",
     }
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return jwt.encode(
+        payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
+    )
 
 
 def verify_token(token: str) -> dict[str, Any]:

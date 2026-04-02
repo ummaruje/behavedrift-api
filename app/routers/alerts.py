@@ -62,16 +62,26 @@ async def list_alerts(
         q = q.where(Alert.acknowledged == acknowledged)
 
     from sqlalchemy import func
+
     count_result = await db.execute(select(func.count()).select_from(q.subquery()))
     total = count_result.scalar_one()
 
-    q = q.order_by(Alert.generated_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    q = (
+        q.order_by(Alert.generated_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
     result = await db.execute(q)
     alerts = result.scalars().all()
 
     return {
         "alerts": [_alert_to_response(a) for a in alerts],
-        "meta": {"total": total, "page": page, "page_size": page_size, "has_next": (page * page_size) < total},
+        "meta": {
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "has_next": (page * page_size) < total,
+        },
     }
 
 
@@ -92,7 +102,10 @@ async def get_resident_alerts(
 
     result = await db.execute(q.order_by(Alert.generated_at.desc()))
     alerts = result.scalars().all()
-    return {"resident_id": resident_id, "alerts": [_alert_to_response(a) for a in alerts]}
+    return {
+        "resident_id": resident_id,
+        "alerts": [_alert_to_response(a) for a in alerts],
+    }
 
 
 @router.get("/detail/{alert_id}")

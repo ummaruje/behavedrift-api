@@ -20,7 +20,15 @@ from app.exceptions import (
 from app.middleware.logging import RequestIDMiddleware, setup_logging
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.redis import init_redis, close_redis
-from app.routers import health, residents, observations, alerts, auth, webhooks, analytics
+from app.routers import (
+    health,
+    residents,
+    observations,
+    alerts,
+    auth,
+    webhooks,
+    analytics,
+)
 
 settings = get_settings()
 
@@ -29,14 +37,17 @@ settings = get_settings()
 # Lifespan — startup / shutdown
 # ============================================================
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Run startup tasks before yielding, then cleanup on shutdown."""
     # Startup
     import structlog
+
     setup_logging()
-    
+
     import logging
+
     logging.basicConfig(level=settings.log_level)
     log = structlog.get_logger("behavedrift")
     log.info(f"Starting BehaveDrift API v1.0.0 [{settings.app_env}]")
@@ -48,8 +59,9 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     await close_redis()
-    
+
     from app.database import engine
+
     await engine.dispose()
     log.info("BehaveDrift API shut down cleanly.")
 

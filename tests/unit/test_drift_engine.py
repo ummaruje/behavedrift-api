@@ -8,6 +8,7 @@ from app.services.drift_engine import evaluate_drift, _classify_tier, _signal_to
 
 # ---- _signal_to_numeric ----
 
+
 def test_mood_to_numeric():
     assert _signal_to_numeric("mood", {"value": 3}) == 3.0
 
@@ -30,16 +31,22 @@ def test_sleep_unknown_returns_none():
 
 def test_pain_score_all_false():
     data = {
-        "facial_grimacing": False, "guarding": False, "vocalisation": False,
-        "restlessness": False, "verbal_report": False
+        "facial_grimacing": False,
+        "guarding": False,
+        "vocalisation": False,
+        "restlessness": False,
+        "verbal_report": False,
     }
     assert _signal_to_numeric("pain_indicators", data) == 0.0
 
 
 def test_pain_score_partial():
     data = {
-        "facial_grimacing": True, "guarding": False, "vocalisation": True,
-        "restlessness": False, "verbal_report": False
+        "facial_grimacing": True,
+        "guarding": False,
+        "vocalisation": True,
+        "restlessness": False,
+        "verbal_report": False,
     }
     assert _signal_to_numeric("pain_indicators", data) == 2.0
 
@@ -89,6 +96,7 @@ def test_classify_t4():
 
 # ---- evaluate_drift — no baseline ----
 
+
 def test_evaluate_drift_no_baseline_returns_zero():
     signals = {"mood": {"value": 1}, "appetite": {"value": "refused"}}
     result = evaluate_drift(signals, baseline_data={})
@@ -126,14 +134,20 @@ def test_evaluate_drift_large_deviation_triggers():
 
 def test_evaluate_drift_high_risk_profile_increases_score():
     signals = {"mood": {"value": 2}, "appetite": {"value": "fair"}}
-    normal = evaluate_drift(signals, baseline_data=BASELINE_WITH_MOOD, risk_profile="medium")
-    high = evaluate_drift(signals, baseline_data=BASELINE_WITH_MOOD, risk_profile="high")
+    normal = evaluate_drift(
+        signals, baseline_data=BASELINE_WITH_MOOD, risk_profile="medium"
+    )
+    high = evaluate_drift(
+        signals, baseline_data=BASELINE_WITH_MOOD, risk_profile="high"
+    )
     assert high.drift_score >= normal.drift_score
 
 
 def test_evaluate_drift_low_risk_profile_decreases_score():
     signals = {"mood": {"value": 2}, "appetite": {"value": "fair"}}
-    normal = evaluate_drift(signals, baseline_data=BASELINE_WITH_MOOD, risk_profile="medium")
+    normal = evaluate_drift(
+        signals, baseline_data=BASELINE_WITH_MOOD, risk_profile="medium"
+    )
     low = evaluate_drift(signals, baseline_data=BASELINE_WITH_MOOD, risk_profile="low")
     assert low.drift_score <= normal.drift_score
 
@@ -147,7 +161,11 @@ def test_evaluate_drift_unknown_signal_skipped_gracefully():
 
 def test_evaluate_drift_score_never_exceeds_1():
     # Extreme deviation
-    signals = {"mood": {"value": 1}, "appetite": {"value": "refused"}, "agitation": {"value": "severe"}}
+    signals = {
+        "mood": {"value": 1},
+        "appetite": {"value": "refused"},
+        "agitation": {"value": "severe"},
+    }
     big_baseline = {
         "signals": {
             "mood": {"mean": 5.0, "std_dev": 0.01},

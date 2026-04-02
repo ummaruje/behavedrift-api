@@ -1,10 +1,18 @@
 """Tenant ORM model — one row per care organisation."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
+
 from sqlalchemy import String, DateTime, Boolean, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.resident import Resident
+    from app.models.webhook import Webhook
 
 
 class Tenant(Base):
@@ -13,7 +21,9 @@ class Tenant(Base):
     id: Mapped[str] = mapped_column(
         String(32), primary_key=True, default=lambda: f"ten_{uuid.uuid4().hex[:8]}"
     )
-    organisation_name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    organisation_name: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False
+    )
     contact_email: Mapped[str] = mapped_column(String(255), nullable=False)
     plan: Mapped[str] = mapped_column(String(50), default="self_hosted")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -31,10 +41,10 @@ class Tenant(Base):
     )
 
     # Relationships
-    residents: Mapped[list["Resident"]] = relationship(  # noqa: F821
+    residents: Mapped[list[Resident]] = relationship(
         "Resident", back_populates="tenant", cascade="all, delete-orphan"
     )
-    webhooks: Mapped[list["Webhook"]] = relationship(  # noqa: F821
+    webhooks: Mapped[list[Webhook]] = relationship(
         "Webhook", back_populates="tenant", cascade="all, delete-orphan"
     )
 

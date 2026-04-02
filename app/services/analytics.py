@@ -14,10 +14,9 @@ from app.models.resident import Resident
 from app.models.observation import Observation
 from app.models.alert import Alert
 
+
 async def calculate_population_risk(
-    tenant_id: str,
-    db: AsyncSession,
-    location: str | None = None
+    tenant_id: str, db: AsyncSession, location: str | None = None
 ) -> dict:
     """Calculates risk distribution and active alerts across all residents for the tenant."""
     # Count residents
@@ -42,7 +41,11 @@ async def calculate_population_risk(
             resident_max_tier[alert.resident_id] = alert.tier
 
     risk_dist = {
-        "stable": 0, "watch_t1": 0, "concern_t2": 0, "alert_t3": 0, "critical_t4": 0,
+        "stable": 0,
+        "watch_t1": 0,
+        "concern_t2": 0,
+        "alert_t3": 0,
+        "critical_t4": 0,
     }
     for r in residents:
         tier = resident_max_tier.get(r.id)
@@ -65,17 +68,23 @@ async def calculate_population_risk(
             name = s.get("signal", "")
             if name:
                 signal_counts[name] = signal_counts.get(name, 0) + 1
-    trending_signals = sorted(signal_counts, key=signal_counts.get, reverse=True)[:5]
+    trending_signals = sorted(signal_counts, key=signal_counts.get, reverse=True)[:5]  # type: ignore[arg-type]
 
     alert_summaries = []
     for alert in active_alerts:
         explanation = alert.explanation or {}
-        primary = [s.get("signal", "") for s in explanation.get("signals", []) if s.get("signal")]
-        alert_summaries.append({
-            "resident_id": alert.resident_id,
-            "tier": alert.tier,
-            "primary_signals": primary[:3],
-        })
+        primary = [
+            s.get("signal", "")
+            for s in explanation.get("signals", [])
+            if s.get("signal")
+        ]
+        alert_summaries.append(
+            {
+                "resident_id": alert.resident_id,
+                "tier": alert.tier,
+                "primary_signals": primary[:3],
+            }
+        )
 
     return {
         "generated_at": datetime.now(timezone.utc),
@@ -88,10 +97,7 @@ async def calculate_population_risk(
 
 
 async def calculate_resident_trend(
-    resident_id: str,
-    tenant_id: str,
-    db: AsyncSession,
-    days: int
+    resident_id: str, tenant_id: str, db: AsyncSession, days: int
 ) -> dict:
     """Returns time-series drift scores for a resident over the specified period."""
     result = await db.execute(
@@ -119,8 +125,7 @@ async def calculate_resident_trend(
     observations = obs_result.scalars().all()
 
     alert_result = await db.execute(
-        select(Alert)
-        .where(
+        select(Alert).where(
             Alert.resident_id == resident_id,
             Alert.tenant_id == tenant_id,
             Alert.generated_at >= period_start,
@@ -160,12 +165,14 @@ async def calculate_resident_trend(
             if v:
                 averaged_signals[k] = round(sum(v) / len(v), 2)
 
-        data_points.append({
-            "date": d,
-            "drift_score": round(avg_drift, 4) if avg_drift is not None else None,
-            "signals": averaged_signals,
-            "alert_tier": alert_by_date.get(d),
-        })
+        data_points.append(
+            {
+                "date": d,
+                "drift_score": round(avg_drift, 4) if avg_drift is not None else None,
+                "signals": averaged_signals,
+                "alert_tier": alert_by_date.get(d),
+            }
+        )
 
     return {
         "resident_id": resident_id,
@@ -195,52 +202,100 @@ async def generate_export_csv(
     writer = csv.writer(output)
 
     if include_observations:
-        writer.writerow([
-            "observation_id", "resident_id", "observed_at", "drift_score",
-            "drift_triggered", "signals_flagged",
-        ])
+        writer.writerow(
+            [
+                "observation_id",
+                "resident_id",
+                "observed_at",
+                "drift_score",
+                "drift_triggered",
+                "signals_flagged",
+            ]
+        )
 
         q = select(Observation).where(Observation.tenant_id == tenant_id)
         if resident_id:
             q = q.where(Observation.resident_id == resident_id)
         if start_date:
-            q = q.where(Observation.observed_at >= datetime.combine(start_date, datetime.min.time()).replace(tzinfo=timezone.utc))
+            q = q.where(
+                Observation.observed_at
+                >= datetime.combine(start_date, datetime.min.time()).replace(
+                    tzinfo=timezone.utc
+                )
+            )
         if end_date:
-            q = q.where(Observation.observed_at <= datetime.combine(end_date, datetime.max.time()).replace(tzinfo=timezone.utc))
+            q = q.where(
+                Observation.observed_at
+                <= datetime.combine(end_date, datetime.max.time()).replace(
+                    tzinfo=timezone.utc
+                )
+            )
         q = q.order_by(Observation.observed_at.desc()).limit(10000)
 
         result = await db.execute(q)
         for obs in result.scalars().all():
-            writer.writerow([
-                obs.id, obs.resident_id, obs.observed_at.isoformat(),
-                obs.drift_score, obs.drift_triggered,
-                "; ".join(obs.signals_flagged or []),
-            ])
+            writer.writerow(
+                [
+                    obs.id,
+                    obs.resident_id,
+                    obs.observed_at.isoformat(),
+                    obs.drift_score,
+                    obs.drift_triggered,
+                    "; ".join(obs.signals_flagged or []),
+                ]
+            )
 
     if include_alerts:
         if include_observations:
             writer.writerow([])
-        writer.writerow([
-            "alert_id", "resident_id", "generated_at", "tier", "tier_label",
-            "drift_score", "confidence_score", "acknowledged", "dismissed",
-        ])
+        writer.writerow(
+            [
+                "alert_id",
+                "resident_id",
+                "generated_at",
+                "tier",
+                "tier_label",
+                "drift_score",
+                "confidence_score",
+                "acknowledged",
+                "dismissed",
+            ]
+        )
 
-        q = select(Alert).where(Alert.tenant_id == tenant_id)
+        q = select(Alert).where(Alert.tenant_id == tenant_id)  # type: ignore[assignment]
         if resident_id:
             q = q.where(Alert.resident_id == resident_id)
         if start_date:
-            q = q.where(Alert.generated_at >= datetime.combine(start_date, datetime.min.time()).replace(tzinfo=timezone.utc))
+            q = q.where(
+                Alert.generated_at
+                >= datetime.combine(start_date, datetime.min.time()).replace(
+                    tzinfo=timezone.utc
+                )
+            )
         if end_date:
-            q = q.where(Alert.generated_at <= datetime.combine(end_date, datetime.max.time()).replace(tzinfo=timezone.utc))
+            q = q.where(
+                Alert.generated_at
+                <= datetime.combine(end_date, datetime.max.time()).replace(
+                    tzinfo=timezone.utc
+                )
+            )
         q = q.order_by(Alert.generated_at.desc()).limit(10000)
 
         result = await db.execute(q)
         for alert in result.scalars().all():
-            writer.writerow([
-                alert.id, alert.resident_id, alert.generated_at.isoformat(),
-                alert.tier, alert.tier_label, alert.drift_score,
-                alert.confidence_score, alert.acknowledged, alert.dismissed,
-            ])
+            writer.writerow(
+                [
+                    alert.id,
+                    alert.resident_id,
+                    alert.generated_at.isoformat(),  # type: ignore[attr-defined]
+                    alert.tier,  # type: ignore[attr-defined]
+                    alert.tier_label,  # type: ignore[attr-defined]
+                    alert.drift_score,
+                    alert.confidence_score,  # type: ignore[attr-defined]
+                    alert.acknowledged,  # type: ignore[attr-defined]
+                    alert.dismissed,  # type: ignore[attr-defined]
+                ]
+            )
 
     output.seek(0)
     return output

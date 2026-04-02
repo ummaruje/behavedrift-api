@@ -27,6 +27,7 @@ router = APIRouter(prefix="/v1/residents", tags=["Residents"])
 
 def _to_response(r: Resident) -> dict:
     from app.config import get_settings
+
     return {
         "resident_id": r.id,
         "internal_reference": r.internal_reference,
@@ -94,9 +95,8 @@ async def list_residents(
 
     # Count total
     from sqlalchemy import func
-    count_result = await db.execute(
-        select(func.count()).select_from(q.subquery())
-    )
+
+    count_result = await db.execute(select(func.count()).select_from(q.subquery()))
     total = count_result.scalar_one()
 
     # Paginate
@@ -149,17 +149,26 @@ async def delete_resident(
         raise NotFoundError(f"Resident '{resident_id}' not found.")
 
     # Count records before deletion
-    obs_count = (await db.execute(
-        select(Observation).where(Observation.resident_id == resident_id)
-    )).scalars().all()
-    alert_count = (await db.execute(
-        select(Alert).where(Alert.resident_id == resident_id)
-    )).scalars().all()
+    obs_count = (
+        (
+            await db.execute(
+                select(Observation).where(Observation.resident_id == resident_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    alert_count = (
+        (await db.execute(select(Alert).where(Alert.resident_id == resident_id)))
+        .scalars()
+        .all()
+    )
 
     await db.delete(resident)
     await db.flush()
 
     import uuid
+
     return {
         "deleted_resident_id": resident_id,
         "certificate_id": f"del_{uuid.uuid4().hex[:12]}",
@@ -194,7 +203,9 @@ async def get_baseline(
         "window_days": resident.baseline_window_days,
         "window_start": baseline_data.get("window_start"),
         "window_end": baseline_data.get("window_end"),
-        "total_observations_in_window": baseline_data.get("total_observations_in_window", 0),
+        "total_observations_in_window": baseline_data.get(
+            "total_observations_in_window", 0
+        ),
         "signals": baseline_data.get("signals", {}),
         "last_calculated_at": baseline_data.get("last_calculated_at"),
     }
@@ -225,6 +236,7 @@ async def reset_baseline(
     await db.flush()
 
     from app.config import get_settings
+
     return {
         "resident_id": resident.id,
         "baseline_status": "initialising",
@@ -234,6 +246,7 @@ async def reset_baseline(
 
 
 # ---- GDPR Article 17 — Right to Erasure ----
+
 
 @router.delete("/{resident_id}/gdpr/erase", status_code=status.HTTP_200_OK)
 async def gdpr_erase_resident(
@@ -273,6 +286,7 @@ async def gdpr_erase_resident(
     await db.flush()
 
     import uuid
+
     certificate_id = f"gdpr_del_{uuid.uuid4().hex[:12]}"
 
     return {

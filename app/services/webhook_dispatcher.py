@@ -1,5 +1,5 @@
 """
-Webhook Dispatch Service 
+Webhook Dispatch Service
 Handles firing webhook payloads to registered endpoints.
 """
 
@@ -22,14 +22,14 @@ settings = get_settings()
 
 logger = structlog.get_logger("behavedrift.webhooks")
 
+
 def generate_signature(payload_bytes: bytes, secret: str) -> str:
     """Generate HMAC-SHA256 signature for webhook payload."""
     signature = hmac.new(
-        key=secret.encode("utf-8"),
-        msg=payload_bytes,
-        digestmod=hashlib.sha256
+        key=secret.encode("utf-8"), msg=payload_bytes, digestmod=hashlib.sha256
     ).hexdigest()
     return signature
+
 
 async def dispatch_webhook_event(tenant_id: str, event_type: str, data: Dict[str, Any]):
     """
@@ -37,31 +37,29 @@ async def dispatch_webhook_event(tenant_id: str, event_type: str, data: Dict[str
     """
     async with AsyncSessionLocal() as session:
         stmt = select(Webhook).where(
-            Webhook.tenant_id == tenant_id,
-            Webhook.active.is_(True)
+            Webhook.tenant_id == tenant_id, Webhook.active.is_(True)
         )
         result = await session.execute(stmt)
         webhooks = result.scalars().all()
-        
+
     matched_webhooks = [
-        w for w in webhooks 
-        if event_type in w.events or "*" in w.events
+        w for w in webhooks if event_type in w.events or "*" in w.events
     ]
-    
+
     if not matched_webhooks:
         return
 
     event_id = f"evt_{ulid.new().str.lower()}"
     timestamp = datetime.now(timezone.utc).isoformat()
-    
+
     payload = {
         "event_id": event_id,
         "event_type": event_type,
         "tenant_id": tenant_id,
         "timestamp": timestamp,
-        "data": data
+        "data": data,
     }
-    
+
     payload_bytes = json.dumps(payload).encode("utf-8")
 
     async with httpx.AsyncClient(timeout=settings.webhook_timeout_seconds) as client:
@@ -75,25 +73,28 @@ async def dispatch_webhook_event(tenant_id: str, event_type: str, data: Dict[str
                 "BehaveDrift-Event-ID": event_id,
                 "BehaveDrift-Event-Type": event_type,
             }
-            tasks.append(
-                _send_with_retry(client, webhook, payload_bytes, headers)
-            )
-            
+            tasks.append(_send_with_retry(client, webhook, payload_bytes, headers))
+
         await asyncio.gather(*tasks, return_exceptions=True)
 
-async def _send_with_retry(client: httpx.AsyncClient, webhook: Webhook, payload_bytes: bytes, headers: dict):
+
+async def _send_with_retry(
+    client: httpx.AsyncClient, webhook: Webhook, payload_bytes: bytes, headers: dict
+):
     """Attempt to send the webhook, obeying retry rules from settings."""
     for attempt in range(1, settings.webhook_retry_attempts + 1):
         try:
-            response = await client.post(webhook.url, content=payload_bytes, headers=headers)
+            response = await client.post(
+                webhook.url, content=payload_bytes, headers=headers
+            )
             if response.is_success:
                 logger.info(
                     "Webhook delivered successfully",
                     webhook_id=webhook.id,
                     url=webhook.url,
-                    status=response.status_code
+                    status=response.status_code,
                 )
-                
+
                 # Update last_triggered_at (requires new session)
                 async with AsyncSessionLocal() as session:
                     stmt = select(Webhook).where(Webhook.id == webhook.id)
@@ -102,25 +103,25 @@ async def _send_with_retry(client: httpx.AsyncClient, webhook: Webhook, payload_
                     if w:
                         w.last_triggered_at = datetime.now(timezone.utc)
                         await session.commit()
-                        
+
                 return True
-                
+
             logger.warning(
                 "Webhook delivery failed",
                 webhook_id=webhook.id,
                 status=response.status_code,
-                attempt=attempt
+                attempt=attempt,
             )
         except httpx.RequestError as exc:
             logger.warning(
                 "Webhook request error",
                 webhook_id=webhook.id,
                 error=str(exc),
-                attempt=attempt
+                attempt=attempt,
             )
-            
+
         if attempt < settings.webhook_retry_attempts:
             await asyncio.sleep(settings.webhook_retry_backoff_seconds)
-            
+
     logger.error("Webhook permanently failed after retries", webhook_id=webhook.id)
     return False

@@ -3,19 +3,20 @@ FHIR Mapper Service
 Maps FHIR R4 resources to BehaveDrift internal models and vice versa.
 """
 
-from dateutil.parser import isoparse
+from dateutil.parser import isoparse  # type: ignore[import-untyped]
 from app.exceptions import ValidationError
 
 # SNOMED CT → BehaveDrift signal mapping
 _SNOMED_SIGNAL_MAP = {
-    "285854004": "mood",               # Emotion
-    "363787002": "appetite",           # Appetite (observable entity)
-    "258158006": "sleep_quality",      # Sleep quality
+    "285854004": "mood",  # Emotion
+    "363787002": "appetite",  # Appetite (observable entity)
+    "258158006": "sleep_quality",  # Sleep quality
     "228553004": "social_engagement",  # Social engagement
-    "22253000":  "pain_indicators",    # Pain
-    "282097004": "mobility",           # Mobility and transfer
-    "24199005":  "agitation",          # Agitation
+    "22253000": "pain_indicators",  # Pain
+    "282097004": "mobility",  # Mobility and transfer
+    "24199005": "agitation",  # Agitation
 }
+
 
 def parse_fhir_observation(fhir_resource: dict) -> tuple[str, str, dict]:
     """
@@ -29,7 +30,9 @@ def parse_fhir_observation(fhir_resource: dict) -> tuple[str, str, dict]:
     subject = fhir_resource.get("subject", {})
     resident_id = subject.get("reference", "").replace("Patient/", "")
     if not resident_id:
-        raise ValidationError("subject.reference is required (e.g. 'Patient/res_7f3a9c21').")
+        raise ValidationError(
+            "subject.reference is required (e.g. 'Patient/res_7f3a9c21')."
+        )
 
     # Extract observed_at
     effective = fhir_resource.get("effectiveDateTime") or fhir_resource.get("effective")
@@ -71,8 +74,10 @@ def parse_fhir_observation(fhir_resource: dict) -> tuple[str, str, dict]:
         value = cc.get("text") or (cc.get("coding", [{}])[0].get("display"))
 
     if value is None:
-        raise ValidationError("No value found in FHIR Observation (valueQuantity, valueString, etc.).")
+        raise ValidationError(
+            "No value found in FHIR Observation (valueQuantity, valueString, etc.)."
+        )
 
     signals_dict = {signal_name: {"value": value}}
-    
+
     return resident_id, observed_at, signals_dict

@@ -20,7 +20,9 @@ class TokenResponse(BaseModel):
 class TenantCreate(BaseModel):
     organisation_name: str = Field(..., min_length=1, max_length=255)
     contact_email: str = Field(..., min_length=1, max_length=255)
-    plan: str = Field(default="self_hosted", pattern="^(self_hosted|starter|enterprise)$")
+    plan: str = Field(
+        default="self_hosted", pattern="^(self_hosted|starter|enterprise)$"
+    )
 
 
 class TenantResponse(BaseModel):
@@ -29,4 +31,6 @@ class TenantResponse(BaseModel):
     client_id: str
     client_secret: str
     api_key: str
-    message: str = "Store the client_secret and api_key securely — they will not be shown again."
+    message: str = (
+        "Store the client_secret and api_key securely — they will not be shown again."
+    )

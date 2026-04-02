@@ -1,10 +1,18 @@
 """Resident ORM model — one row per care home resident."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 from sqlalchemy import String, DateTime, Integer, JSON, func, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.tenant import Tenant
+    from app.models.observation import Observation
+    from app.models.alert import Alert
 
 
 class Resident(Base):
@@ -14,7 +22,10 @@ class Resident(Base):
         String(32), primary_key=True, default=lambda: f"res_{uuid.uuid4().hex[:8]}"
     )
     tenant_id: Mapped[str] = mapped_column(
-        String(32), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+        String(32),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     internal_reference: Mapped[str] = mapped_column(String(255), nullable=False)
     # Unique within a tenant — not globally
@@ -42,7 +53,9 @@ class Resident(Base):
     baseline_reset_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     total_observations: Mapped[int] = mapped_column(Integer, default=0)
-    last_observation_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_observation_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -52,17 +65,18 @@ class Resident(Base):
     )
 
     # Relationships
-    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="residents")  # noqa: F821
-    observations: Mapped[list["Observation"]] = relationship(  # noqa: F821
+    tenant: Mapped[Tenant] = relationship("Tenant", back_populates="residents")
+    observations: Mapped[list[Observation]] = relationship(
         "Observation", back_populates="resident", cascade="all, delete-orphan"
     )
-    alerts: Mapped[list["Alert"]] = relationship(  # noqa: F821
+    alerts: Mapped[list[Alert]] = relationship(
         "Alert", back_populates="resident", cascade="all, delete-orphan"
     )
 
     @property
     def min_observations_required(self) -> int:
         from app.config import get_settings
+
         return get_settings().baseline_min_observations
 
     def __repr__(self) -> str:

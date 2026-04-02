@@ -23,11 +23,13 @@ class Settings(BaseSettings):
     app_port: int = 8000
     debug: bool = False
     log_level: str = "INFO"
-    log_format: str = "json"           # json | pretty
+    log_format: str = "json"  # json | pretty
     allowed_hosts: list[str] = ["*"]
 
     # ---- Database ----
-    database_url: str = "postgresql+asyncpg://behavedrift:behavedrift_dev@localhost:5432/behavedrift_dev"
+    database_url: str = (
+        "postgresql+asyncpg://behavedrift:behavedrift_dev@localhost:5432/behavedrift_dev"
+    )
     database_pool_size: int = 10
     database_max_overflow: int = 20
     database_echo: bool = False
@@ -37,7 +39,7 @@ class Settings(BaseSettings):
 
     # ---- Auth — JWT ----
     jwt_secret_key: str = "dev-only-secret-change-this-in-production"
-    jwt_algorithm: str = "HS256"       # Use RS256 in production
+    jwt_algorithm: str = "HS256"  # Use RS256 in production
     access_token_expire_minutes: int = 60
 
     # ---- Auth — API Key ----
@@ -71,15 +73,17 @@ class Settings(BaseSettings):
     fhir_auth_token: str = ""
 
     # ---- Data Retention ----
-    observation_retention_days: int = 2555   # 7 years
+    observation_retention_days: int = 2555  # 7 years
     alert_retention_days: int = 2555
     gdpr_audit_log_retention_days: int = 3650  # 10 years
 
-    @field_validator("drift_alert_threshold_t1",
-                     "drift_alert_threshold_t2",
-                     "drift_alert_threshold_t3",
-                     "drift_alert_threshold_t4",
-                     mode="before")
+    @field_validator(
+        "drift_alert_threshold_t1",
+        "drift_alert_threshold_t2",
+        "drift_alert_threshold_t3",
+        "drift_alert_threshold_t4",
+        mode="before",
+    )
     @classmethod
     def validate_threshold(cls, v: float) -> float:
         if not 0.0 <= float(v) <= 1.0:

@@ -63,7 +63,14 @@ def test_partial_required_signals_no_match():
 
 def test_confidence_never_exceeds_0_95():
     # All possible signals flagged
-    all_signals = ["mood", "agitation", "appetite", "sleep_quality", "social_engagement", "mobility"]
+    all_signals = [
+        "mood",
+        "agitation",
+        "appetite",
+        "sleep_quality",
+        "social_engagement",
+        "mobility",
+    ]
     result = match_clinical_pattern(
         {s: {} for s in all_signals},
         all_signals,

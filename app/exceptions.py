@@ -12,8 +12,10 @@ import uuid
 # Custom Exception Classes
 # ============================================================
 
+
 class BehaveDriftError(Exception):
     """Base exception for all BehaveDrift errors."""
+
     status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR
     error_code: str = "internal_error"
 
@@ -40,6 +42,7 @@ class ForbiddenError(BehaveDriftError):
 
 class NotFoundError(BehaveDriftError):
     """Used for both missing resources AND tenant isolation violations."""
+
     status_code = status.HTTP_404_NOT_FOUND
     error_code = "not_found"
 
@@ -68,6 +71,7 @@ class RateLimitError(BehaveDriftError):
 # Error Response Builder
 # ============================================================
 
+
 def _build_error_response(
     request: Request,
     error_code: str,
@@ -91,6 +95,7 @@ def _build_error_response(
 # Exception Handlers
 # ============================================================
 
+
 async def behavedrift_exception_handler(
     request: Request, exc: BehaveDriftError
 ) -> JSONResponse:
@@ -99,9 +104,12 @@ async def behavedrift_exception_handler(
     )
 
 
-async def validation_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+async def validation_exception_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:
     """Handle Pydantic validation errors from FastAPI."""
     from fastapi.exceptions import RequestValidationError
+
     if isinstance(exc, RequestValidationError):
         details = [
             {
@@ -124,6 +132,7 @@ async def validation_exception_handler(request: Request, exc: Exception) -> JSON
 async def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle generic HTTP exceptions."""
     from fastapi import HTTPException
+
     if isinstance(exc, HTTPException):
         error_map = {
             401: ("authentication_required", "Authentication required."),
@@ -140,6 +149,7 @@ async def http_exception_handler(request: Request, exc: Exception) -> JSONRespon
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Catch-all for unexpected server errors — never expose internals."""
     import logging
+
     request_id = getattr(request.state, "request_id", "unknown")
     logging.getLogger("behavedrift").error(
         "Unhandled exception",

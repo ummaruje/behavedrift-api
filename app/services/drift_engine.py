@@ -36,9 +36,21 @@ _SIGNAL_WEIGHTS: dict[str, float] = {
 
 # Ordinal signal mappings (string → numeric for z-score)
 _APPETITE_MAP = {"excellent": 5, "good": 4, "fair": 3, "poor": 2, "refused": 1}
-_SLEEP_MAP = {"good": 4, "fair": 3, "disturbed": 2, "very_disturbed": 1, "unknown": None}
+_SLEEP_MAP = {
+    "good": 4,
+    "fair": 3,
+    "disturbed": 2,
+    "very_disturbed": 1,
+    "unknown": None,
+}
 _SOCIAL_MAP = {"engaged": 4, "moderate": 3, "withdrawn": 2, "isolated": 1}
-_MOBILITY_MAP = {"independent": 5, "supervised": 4, "assisted": 3, "dependent": 2, "bedbound": 1}
+_MOBILITY_MAP = {
+    "independent": 5,
+    "supervised": 4,
+    "assisted": 3,
+    "dependent": 2,
+    "bedbound": 1,
+}
 _AGITATION_MAP = {"calm": 1, "mild": 2, "moderate": 3, "severe": 4}
 
 
@@ -53,7 +65,7 @@ def _signal_to_numeric(signal_name: str, signal_data: dict[str, Any]) -> float |
 
     if signal_name == "sleep_quality":
         raw = signal_data.get("value")
-        return float(v) if (v := _SLEEP_MAP.get(raw)) is not None else None
+        return float(v) if (v := _SLEEP_MAP.get(raw)) is not None else None  # type: ignore[arg-type]
 
     if signal_name == "social_engagement":
         raw = signal_data.get("value")
@@ -61,7 +73,13 @@ def _signal_to_numeric(signal_name: str, signal_data: dict[str, Any]) -> float |
 
     if signal_name == "pain_indicators":
         # Score = count of True flags (0–5)
-        flags = ["facial_grimacing", "guarding", "vocalisation", "restlessness", "verbal_report"]
+        flags = [
+            "facial_grimacing",
+            "guarding",
+            "vocalisation",
+            "restlessness",
+            "verbal_report",
+        ]
         return float(sum(1 for f in flags if signal_data.get(f, False)))
 
     if signal_name == "mobility":

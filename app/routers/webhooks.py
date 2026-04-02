@@ -69,9 +69,7 @@ async def list_webhooks(
     db: AsyncSession = Depends(get_db),
 ):
     """List all registered webhooks for the authenticated tenant."""
-    result = await db.execute(
-        select(Webhook).where(Webhook.tenant_id == tenant.id)
-    )
+    result = await db.execute(select(Webhook).where(Webhook.tenant_id == tenant.id))
     webhooks = result.scalars().all()
 
     return {

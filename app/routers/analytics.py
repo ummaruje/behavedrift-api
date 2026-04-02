@@ -11,12 +11,17 @@ from app.auth.dependencies import get_current_tenant
 from app.database import get_db
 from app.models.tenant import Tenant
 from app.schemas.analytics import PopulationRiskResponse, ResidentTrendResponse
-from app.services.analytics import calculate_population_risk, calculate_resident_trend, generate_export_csv
+from app.services.analytics import (
+    calculate_population_risk,
+    calculate_resident_trend,
+    generate_export_csv,
+)
 
 router = APIRouter(prefix="/v1/analytics", tags=["Analytics"])
 
 
 # ---- Population-level risk distribution ----
+
 
 @router.get("/population", response_model=PopulationRiskResponse)
 async def get_population_risk(
@@ -33,6 +38,7 @@ async def get_population_risk(
 
 # ---- Longitudinal drift trend for a resident ----
 
+
 @router.get("/trends/{resident_id}", response_model=ResidentTrendResponse)
 async def get_resident_trend(
     resident_id: str,
@@ -47,6 +53,7 @@ async def get_resident_trend(
 
 
 # ---- Export ----
+
 
 @router.get("/export")
 async def export_report(

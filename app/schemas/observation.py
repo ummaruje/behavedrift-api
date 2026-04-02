@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, model_validator
 
 # ---- Signal schemas (mirror OpenAPI spec) ----
 
+
 class MoodSignal(BaseModel):
     value: int = Field(..., ge=1, le=5)
     scale: str = "1-5"
@@ -41,7 +42,9 @@ class PainIndicatorSignal(BaseModel):
 
 
 class MobilitySignal(BaseModel):
-    value: str = Field(..., pattern="^(independent|supervised|assisted|dependent|bedbound)$")
+    value: str = Field(
+        ..., pattern="^(independent|supervised|assisted|dependent|bedbound)$"
+    )
     baseline_comparison: str | None = Field(
         default=None,
         pattern="^(better_than_usual|same_as_usual|worse_than_usual|unknown)$",
@@ -67,11 +70,19 @@ class ObservationSignals(BaseModel):
 
     @model_validator(mode="after")
     def at_least_one_signal(self) -> "ObservationSignals":
-        values = [v for v in [
-            self.mood, self.appetite, self.sleep_quality,
-            self.social_engagement, self.pain_indicators,
-            self.mobility, self.agitation,
-        ] if v is not None]
+        values = [
+            v
+            for v in [
+                self.mood,
+                self.appetite,
+                self.sleep_quality,
+                self.social_engagement,
+                self.pain_indicators,
+                self.mobility,
+                self.agitation,
+            ]
+            if v is not None
+        ]
         if not values:
             raise ValueError("At least one signal must be provided.")
         return self
@@ -86,6 +97,7 @@ class ObservationContext(BaseModel):
 
 
 # ---- Request / Response ----
+
 
 class ObservationCreate(BaseModel):
     resident_id: str

@@ -1,10 +1,16 @@
 """Observation ORM model — a single care observation data point."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 from sqlalchemy import String, DateTime, JSON, Float, ForeignKey, func, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.resident import Resident
 
 
 class Observation(Base):
@@ -22,7 +28,9 @@ class Observation(Base):
     )
     tenant_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
 
-    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     processed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -39,7 +47,7 @@ class Observation(Base):
     signals_flagged: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     # Relationships
-    resident: Mapped["Resident"] = relationship("Resident", back_populates="observations")  # noqa: F821
+    resident: Mapped[Resident] = relationship("Resident", back_populates="observations")
 
     def __repr__(self) -> str:
         return f"<Observation id={self.id} resident={self.resident_id} at={self.observed_at}>"

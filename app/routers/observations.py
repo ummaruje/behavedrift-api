@@ -29,6 +29,7 @@ router = APIRouter(prefix="/v1/observations", tags=["Observations"])
 
 # ---- Helper ----
 
+
 async def _get_resident_or_404(
     resident_id: str, tenant: Tenant, db: AsyncSession
 ) -> Resident:
@@ -71,7 +72,9 @@ async def _process_single_observation(
         observed_at=payload.observed_at,
         observer_id=payload.observer_id,
         signals=signals_dict,
-        context=payload.context.model_dump(exclude_none=True) if payload.context else None,
+        context=(
+            payload.context.model_dump(exclude_none=True) if payload.context else None
+        ),
         drift_score=evaluation.drift_score,
         drift_triggered=evaluation.triggered,
         signals_flagged=evaluation.signals_flagged,
@@ -147,7 +150,10 @@ def _build_explanation_summary(evaluation) -> str:
 
 # ---- Routes ----
 
-@router.post("", response_model=ObservationResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "", response_model=ObservationResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_observation(
     payload: ObservationCreate,
     tenant: Annotated[Tenant, Depends(get_current_tenant)],
@@ -158,7 +164,9 @@ async def create_observation(
     return result
 
 
-@router.post("/batch", response_model=ObservationBatchResponse, status_code=status.HTTP_200_OK)
+@router.post(
+    "/batch", response_model=ObservationBatchResponse, status_code=status.HTTP_200_OK
+)
 async def create_observation_batch(
     payload: ObservationBatchRequest,
     tenant: Annotated[Tenant, Depends(get_current_tenant)],
@@ -173,11 +181,13 @@ async def create_observation_batch(
             result = await _process_single_observation(obs_payload, tenant, db)
             results.append(result)
         except Exception as e:
-            errors.append({
-                "index": idx,
-                "error": type(e).__name__,
-                "message": str(e),
-            })
+            errors.append(
+                {
+                    "index": idx,
+                    "error": type(e).__name__,
+                    "message": str(e),
+                }
+            )
 
     return {
         "submitted": len(payload.observations),
@@ -189,6 +199,7 @@ async def create_observation_batch(
 
 
 # ---- FHIR R4 Observation ingestion ----
+
 
 @router.post("/fhir", status_code=status.HTTP_201_CREATED)
 async def create_fhir_observation(
@@ -207,6 +218,7 @@ async def create_fhir_observation(
     resident = await _get_resident_or_404(resident_id, tenant, db)
 
     from app.services.baseline import should_recalculate, update_resident_baseline
+
     if await should_recalculate(resident):
         resident = await update_resident_baseline(resident, db)
 
@@ -227,7 +239,7 @@ async def create_fhir_observation(
     )
     db.add(obs)
     resident.total_observations = (resident.total_observations or 0) + 1
-    resident.last_observation_at = observed_at
+    resident.last_observation_at = observed_at  # type: ignore[assignment]
     await db.flush()
 
     return {
@@ -247,6 +259,7 @@ async def create_fhir_observation(
 
 
 # ---- Observation history ----
+
 
 @router.get("/{resident_id}")
 async def get_observation_history(
@@ -271,16 +284,16 @@ async def get_observation_history(
     )
 
     if start_date:
-        from dateutil.parser import isoparse
+        from dateutil.parser import isoparse  # type: ignore[import-untyped]
+
         q = q.where(Observation.observed_at >= isoparse(start_date))
     if end_date:
-        from dateutil.parser import isoparse
+        from dateutil.parser import isoparse  # type: ignore[import-untyped]
+
         q = q.where(Observation.observed_at <= isoparse(end_date))
 
     # Count total
-    count_result = await db.execute(
-        select(sqla_func.count()).select_from(q.subquery())
-    )
+    count_result = await db.execute(select(sqla_func.count()).select_from(q.subquery()))
     total = count_result.scalar_one()
 
     # Paginate
@@ -295,17 +308,21 @@ async def get_observation_history(
         # Apply signal filter if specified
         if signal and signal not in signals_data:
             continue
-        obs_list.append({
-            "observation_id": obs.id,
-            "resident_id": obs.resident_id,
-            "observed_at": obs.observed_at,
-            "observer_id": obs.observer_id,
-            "signals": signals_data if not signal else {signal: signals_data.get(signal)},
-            "context": obs.context,
-            "drift_score": obs.drift_score,
-            "drift_triggered": obs.drift_triggered,
-            "processed_at": obs.processed_at,
-        })
+        obs_list.append(
+            {
+                "observation_id": obs.id,
+                "resident_id": obs.resident_id,
+                "observed_at": obs.observed_at,
+                "observer_id": obs.observer_id,
+                "signals": (
+                    signals_data if not signal else {signal: signals_data.get(signal)}
+                ),
+                "context": obs.context,
+                "drift_score": obs.drift_score,
+                "drift_triggered": obs.drift_triggered,
+                "processed_at": obs.processed_at,
+            }
+        )
 
     return {
         "resident_id": resident_id,
