@@ -937,6 +937,18 @@ components:
             code: 404
             request_id: req_abc123
 
+    BadRequest:
+      description: Malformed request — invalid syntax, encoding, or parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: bad_request
+            message: Invalid HTTP request received.
+            code: 400
+            request_id: req_abc123
+
     UnprocessableEntity:
       description: Request body failed schema validation
       content:
@@ -1052,6 +1064,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           description: Invalid client credentials
           content:
@@ -1121,6 +1135,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResidentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '409':
@@ -1180,6 +1196,8 @@ paths:
                       $ref: '#/components/schemas/ResidentResponse'
                   meta:
                     $ref: '#/components/schemas/PaginationMeta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -1206,6 +1224,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResidentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1239,6 +1259,8 @@ paths:
                       observations: { type: integer }
                       alerts: { type: integer }
                       baseline_snapshots: { type: integer }
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1269,6 +1291,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BaselineSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1327,6 +1351,8 @@ paths:
                     example: initialising
                   reset_at: { type: string, format: date-time }
                   min_observations_required: { type: integer, example: 14 }
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1358,6 +1384,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ObservationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1398,6 +1426,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ObservationBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '422':
@@ -1446,6 +1476,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ObservationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '422':
@@ -1511,6 +1543,8 @@ paths:
                             processed_at: { type: string, format: date-time }
                   meta:
                     $ref: '#/components/schemas/PaginationMeta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1556,6 +1590,8 @@ paths:
                       $ref: '#/components/schemas/AlertResponse'
                   meta:
                     $ref: '#/components/schemas/PaginationMeta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -1588,6 +1624,8 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/AlertResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1613,6 +1651,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AlertResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1645,6 +1685,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AlertResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1687,6 +1729,8 @@ paths:
                   alert_id: { type: string }
                   dismissed: { type: boolean, example: true }
                   dismissed_at: { type: string, format: date-time }
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1718,6 +1762,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PopulationRiskResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -1746,6 +1792,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResidentTrendResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1795,6 +1843,8 @@ paths:
               schema:
                 type: object
                 description: FHIR R4 Bundle
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '422':
@@ -1826,6 +1876,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WebhookResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '422':
@@ -1850,6 +1902,8 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/WebhookResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -1869,6 +1923,8 @@ paths:
       responses:
         '204':
           description: Webhook removed
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
