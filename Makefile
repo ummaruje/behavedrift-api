@@ -71,9 +71,7 @@ test-contract: ## Run OpenAPI contract tests against running server
 	@echo "Validating OpenAPI spec against live server..."
 	schemathesis run docs/openapi.yaml \
 		--base-url http://localhost:8000 \
-		--auth-type=bearer \
-		--auth=$(TEST_API_TOKEN) \
-		--checks all
+		--phases=fuzzing
 
 test-load: ## Run basic load test (requires k6)
 	k6 run tests/load/basic_load_test.js

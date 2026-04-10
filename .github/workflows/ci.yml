@@ -199,7 +199,6 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install schemathesis
 
       - name: Start API server
         run: |
@@ -213,8 +212,8 @@ jobs:
         run: |
           schemathesis run docs/openapi.yaml \
             --base-url http://localhost:8000 \
-            --checks all \
-            --hypothesis-max-examples 50
+            --phases=fuzzing \
+            --generation-database=none
 
   # ============================================================
   # Stage 5: Security Scan

@@ -10,7 +10,7 @@ pytest-cov==5.0.0
 httpx==0.28.1                # async test client
 
 # Contract testing
-schemathesis==3.27.1
+schemathesis==4.15.0
 
 # Load testing (run separately via make test-load)
 # k6 — install via brew/apt, not pip
