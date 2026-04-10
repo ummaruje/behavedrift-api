@@ -211,7 +211,7 @@ jobs:
       - name: Run contract tests
         run: |
           schemathesis run docs/openapi.yaml \
-            --base-url http://localhost:8000 \
+            --url http://localhost:8000 \
             --phases=fuzzing \
             --generation-database=none
 

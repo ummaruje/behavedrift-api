@@ -70,7 +70,7 @@ test-coverage: migrate-test ## Run tests with coverage report
 test-contract: ## Run OpenAPI contract tests against running server
 	@echo "Validating OpenAPI spec against live server..."
 	schemathesis run docs/openapi.yaml \
-		--base-url http://localhost:8000 \
+		--url http://localhost:8000 \
 		--phases=fuzzing
 
 test-load: ## Run basic load test (requires k6)
