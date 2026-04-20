@@ -7,6 +7,7 @@ The request_id is:
  - Included in every error response body
  - Injected into JSON logs via structlog contextvars
 """
+
 from __future__ import annotations
 
 

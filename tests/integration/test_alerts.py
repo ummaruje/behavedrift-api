@@ -15,7 +15,7 @@ async def setup_resident(db_session: AsyncSession, active_tenant: Tenant) -> Res
         tenant_id=active_tenant.id,
         internal_reference="TEST-RES",
         date_of_birth=datetime.datetime(1940, 1, 1, tzinfo=datetime.timezone.utc),
-        risk_profile="high"
+        risk_profile="high",
     )
     db_session.add(resident)
     await db_session.commit()
@@ -24,7 +24,9 @@ async def setup_resident(db_session: AsyncSession, active_tenant: Tenant) -> Res
 
 
 @pytest_asyncio.fixture
-async def setup_alert(db_session: AsyncSession, active_tenant: Tenant, setup_resident: Resident) -> Alert:
+async def setup_alert(
+    db_session: AsyncSession, active_tenant: Tenant, setup_resident: Resident
+) -> Alert:
     alert = Alert(
         resident_id=setup_resident.id,
         tenant_id=active_tenant.id,
@@ -32,7 +34,7 @@ async def setup_alert(db_session: AsyncSession, active_tenant: Tenant, setup_res
         tier_label="Alert",
         drift_score=0.8,
         confidence_score=0.9,
-        explanation={"signals": [{"signal": "poor_sleep"}]}
+        explanation={"signals": [{"signal": "poor_sleep"}]},
     )
     db_session.add(alert)
     await db_session.commit()
@@ -41,7 +43,12 @@ async def setup_alert(db_session: AsyncSession, active_tenant: Tenant, setup_res
 
 
 @pytest.mark.asyncio
-async def test_get_resident_alerts(client: AsyncClient, active_tenant_token: str, setup_resident: Resident, setup_alert: Alert):
+async def test_get_resident_alerts(
+    client: AsyncClient,
+    active_tenant_token: str,
+    setup_resident: Resident,
+    setup_alert: Alert,
+):
     headers = {"Authorization": f"Bearer {active_tenant_token}"}
     response = await client.get(f"/v1/alerts/{setup_resident.id}", headers=headers)
     assert response.status_code == 200
@@ -52,7 +59,12 @@ async def test_get_resident_alerts(client: AsyncClient, active_tenant_token: str
 
 
 @pytest.mark.asyncio
-async def test_get_alert_detail(client: AsyncClient, active_tenant_token: str, setup_resident: Resident, setup_alert: Alert):
+async def test_get_alert_detail(
+    client: AsyncClient,
+    active_tenant_token: str,
+    setup_resident: Resident,
+    setup_alert: Alert,
+):
     headers = {"Authorization": f"Bearer {active_tenant_token}"}
     response = await client.get(f"/v1/alerts/{setup_alert.id}", headers=headers)
     assert response.status_code == 200
@@ -63,13 +75,20 @@ async def test_get_alert_detail(client: AsyncClient, active_tenant_token: str, s
 
 
 @pytest.mark.asyncio
-async def test_acknowledge_alert(client: AsyncClient, active_tenant_token: str, setup_resident: Resident, setup_alert: Alert):
+async def test_acknowledge_alert(
+    client: AsyncClient,
+    active_tenant_token: str,
+    setup_resident: Resident,
+    setup_alert: Alert,
+):
     headers = {"Authorization": f"Bearer {active_tenant_token}"}
     payload = {
         "action_taken": "Treated patient with analgesics",
-        "actioned_by": "Dr. Smith"
+        "actioned_by": "Dr. Smith",
     }
-    response = await client.post(f"/v1/alerts/{setup_alert.id}/acknowledge", headers=headers, json=payload)
+    response = await client.post(
+        f"/v1/alerts/{setup_alert.id}/acknowledge", headers=headers, json=payload
+    )
     assert response.status_code == 200
     assert response.status_code == 200
     # Verify state via detail endpoint

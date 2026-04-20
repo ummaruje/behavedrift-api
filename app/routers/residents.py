@@ -1,4 +1,5 @@
 """Router: /v1/residents — resident registration and baseline management."""
+
 from __future__ import annotations
 
 

@@ -1,4 +1,5 @@
 """Pydantic schemas for analytics endpoints."""
+
 from __future__ import annotations
 
 

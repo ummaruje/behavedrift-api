@@ -2,6 +2,7 @@
 BehaveDrift API — Custom Exceptions & FastAPI Exception Handlers
 All errors return the standard ErrorResponse shape defined in ADR-004.
 """
+
 from __future__ import annotations
 
 

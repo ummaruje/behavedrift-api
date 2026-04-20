@@ -1,4 +1,5 @@
 """Router: /v1/alerts — alert listing, acknowledgement, and dismissal."""
+
 from __future__ import annotations
 
 

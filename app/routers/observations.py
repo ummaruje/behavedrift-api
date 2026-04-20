@@ -1,4 +1,5 @@
 """Router: /v1/observations — ingest observation data points."""
+
 from __future__ import annotations
 
 

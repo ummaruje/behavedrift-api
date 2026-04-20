@@ -2,6 +2,7 @@
 FHIR Mapper Service
 Maps FHIR R4 resources to BehaveDrift internal models and vice versa.
 """
+
 from __future__ import annotations
 
 

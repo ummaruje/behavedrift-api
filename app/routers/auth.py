@@ -1,4 +1,5 @@
 """Router: /v1/auth — OAuth2 token issuance and tenant provisioning."""
+
 from __future__ import annotations
 
 

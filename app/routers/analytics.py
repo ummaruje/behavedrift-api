@@ -1,4 +1,5 @@
 """Router: /v1/analytics — population-level analytics, trends, and export."""
+
 from __future__ import annotations
 
 
@@ -62,7 +63,7 @@ async def get_resident_trend(
 async def get_correlations(
     tenant: Annotated[Tenant, Depends(get_current_tenant)],
     db: AsyncSession = Depends(get_db),
-    days: int = Query(default=30, ge=7, le=365)
+    days: int = Query(default=30, ge=7, le=365),
 ):
     """
     Returns Staff / environment correlation analysis.

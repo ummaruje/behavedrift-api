@@ -1,4 +1,5 @@
 """Pydantic schemas for authentication and tenant provisioning."""
+
 from __future__ import annotations
 
 

@@ -50,7 +50,9 @@ class Resident(Base):
     baseline_reset_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    baseline_reset_reason: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    baseline_reset_reason: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
+    )
 
     total_observations: Mapped[int] = mapped_column(Integer, default=0)
     last_observation_at: Mapped[Optional[datetime]] = mapped_column(

@@ -21,6 +21,7 @@ TestingSessionLocal = async_sessionmaker(
     autocommit=False,
 )
 
+
 async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
     async with TestingSessionLocal() as session:
         try:
@@ -29,6 +30,7 @@ async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
+
 
 app.dependency_overrides[get_db] = override_get_db
 
@@ -40,9 +42,9 @@ async def db_setup():
     # creating tables is enough.
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     yield
-    
+
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
@@ -72,7 +74,7 @@ async def active_tenant(db_session: AsyncSession) -> Tenant:
         plan="self_hosted",
         client_id="test_client_id_123",
         client_secret_hash="fake_hash",
-        is_active=True
+        is_active=True,
     )
     db_session.add(tenant)
     await db_session.commit()
