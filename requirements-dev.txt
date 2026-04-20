@@ -38,3 +38,4 @@ pre-commit==3.7.1
 # Database tools for tests
 factory-boy==3.3.0           # test data factories
 faker==25.0.0
+aiosqlite==0.22.1
