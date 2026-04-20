@@ -77,4 +77,4 @@ async def test_acknowledge_alert(client: AsyncClient, active_tenant_token: str, 
     data2 = response2.json()
     assert data2["metadata"]["action_taken"] == "Treated patient with analgesics"
     assert data2["metadata"]["acknowledged_by"] == "Dr. Smith"
-    assert data2["metadata"]["acknowledged"] == True
+    assert data2["metadata"]["acknowledged"] is True

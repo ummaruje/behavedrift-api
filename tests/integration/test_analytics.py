@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient
 
-from app.models.tenant import Tenant
+
 
 @pytest.mark.asyncio
 async def test_get_correlations(client: AsyncClient, active_tenant_token: str):
