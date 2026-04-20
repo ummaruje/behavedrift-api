@@ -1,6 +1,8 @@
 """
 Redis integration for caching, rate limiting, and queueing.
 """
+from __future__ import annotations
+
 
 import redis.asyncio as aioredis
 from typing import Optional

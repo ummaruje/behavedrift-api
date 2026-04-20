@@ -1,4 +1,6 @@
 """Password / secret hashing using bcrypt."""
+from __future__ import annotations
+
 
 import bcrypt
 

@@ -4,6 +4,7 @@ Uses HS256 in development; switch to RS256 in production by setting
 jwt_private_key_path and jwt_public_key_path in config.
 """
 
+from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 

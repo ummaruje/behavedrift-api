@@ -1,4 +1,6 @@
 """Router: /health — unauthenticated service health check."""
+from __future__ import annotations
+
 
 from fastapi import APIRouter
 from sqlalchemy import text

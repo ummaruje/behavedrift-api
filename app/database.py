@@ -1,6 +1,8 @@
 """
 BehaveDrift API — Async Database Engine & Session Factory
 """
+from __future__ import annotations
+
 
 from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import (

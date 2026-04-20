@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from sqlalchemy import String, DateTime, JSON, Float, ForeignKey, func, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
@@ -34,17 +34,17 @@ class Observation(Base):
     processed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-    observer_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    observer_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
 
     # Raw signals as submitted — JSON blob
     signals: Mapped[dict] = mapped_column(JSON, nullable=False)
     # Optional context (location, medication, visitor)
-    context: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    context: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     # Drift evaluation result at time of ingestion
-    drift_score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    drift_triggered: Mapped[bool | None] = mapped_column(nullable=True)
-    signals_flagged: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    drift_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    drift_triggered: Mapped[Optional[bool]] = mapped_column(nullable=True)
+    signals_flagged: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
 
     # Relationships
     resident: Mapped[Resident] = relationship("Resident", back_populates="observations")

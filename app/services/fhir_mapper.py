@@ -2,6 +2,8 @@
 FHIR Mapper Service
 Maps FHIR R4 resources to BehaveDrift internal models and vice versa.
 """
+from __future__ import annotations
+
 
 from dateutil.parser import isoparse  # type: ignore[import-untyped]
 from app.exceptions import ValidationError

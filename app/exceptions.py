@@ -2,10 +2,13 @@
 BehaveDrift API — Custom Exceptions & FastAPI Exception Handlers
 All errors return the standard ErrorResponse shape defined in ADR-004.
 """
+from __future__ import annotations
+
 
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 import uuid
+from typing import Optional
 
 
 # ============================================================
@@ -19,7 +22,7 @@ class BehaveDriftError(Exception):
     status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR
     error_code: str = "internal_error"
 
-    def __init__(self, message: str, details: list | None = None):
+    def __init__(self, message: str, details: Optional[list] = None):
         self.message = message
         self.details = details or []
         super().__init__(message)
@@ -77,7 +80,7 @@ def _build_error_response(
     error_code: str,
     message: str,
     status_code: int,
-    details: list | None = None,
+    details: Optional[list] = None,
 ) -> JSONResponse:
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     body = {

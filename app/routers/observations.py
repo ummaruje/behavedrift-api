@@ -1,4 +1,6 @@
 """Router: /v1/observations — ingest observation data points."""
+from __future__ import annotations
+
 
 from datetime import datetime, timezone
 from typing import Annotated

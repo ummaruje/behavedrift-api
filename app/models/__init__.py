@@ -1,4 +1,6 @@
 """BehaveDrift — SQLAlchemy ORM models package."""
+from __future__ import annotations
+
 
 from app.models.tenant import Tenant
 from app.models.resident import Resident

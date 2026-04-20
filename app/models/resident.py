@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from sqlalchemy import String, DateTime, Integer, JSON, func, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
@@ -34,26 +34,26 @@ class Resident(Base):
     )
 
     # Clinical (no PII — only age-band metadata)
-    date_of_birth: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    date_of_birth: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     diagnosis_codes: Mapped[list] = mapped_column(JSON, default=list)
     risk_profile: Mapped[str] = mapped_column(String(20), default="medium")
-    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     # Baseline config
     baseline_window_days: Mapped[int] = mapped_column(Integer, default=28)
     baseline_status: Mapped[str] = mapped_column(String(30), default="initialising")
     # Serialised baseline statistics — updated periodically by baseline service
-    baseline_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    baseline_last_calculated_at: Mapped[datetime | None] = mapped_column(
+    baseline_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    baseline_last_calculated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    baseline_reset_at: Mapped[datetime | None] = mapped_column(
+    baseline_reset_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    baseline_reset_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    baseline_reset_reason: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     total_observations: Mapped[int] = mapped_column(Integer, default=0)
-    last_observation_at: Mapped[datetime | None] = mapped_column(
+    last_observation_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 

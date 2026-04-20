@@ -1,4 +1,6 @@
 """Router: /v1/webhooks — webhook endpoint registration and management."""
+from __future__ import annotations
+
 
 import secrets
 from typing import Annotated

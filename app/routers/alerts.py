@@ -1,4 +1,6 @@
 """Router: /v1/alerts — alert listing, acknowledgement, and dismissal."""
+from __future__ import annotations
+
 
 from typing import Annotated
 from datetime import datetime, timezone
@@ -85,38 +87,31 @@ async def list_alerts(
     }
 
 
-@router.get("/{resident_id}")
-async def get_resident_alerts(
-    resident_id: str,
+@router.get("/{id}")
+async def get_alert_or_resident_alerts(
+    id: str,
     tenant: Annotated[Tenant, Depends(get_current_tenant)],
     db: AsyncSession = Depends(get_db),
     include_dismissed: bool = False,
 ):
-    """Get all alerts for a specific resident."""
-    q = select(Alert).where(
-        Alert.resident_id == resident_id,
-        Alert.tenant_id == tenant.id,
-    )
-    if not include_dismissed:
-        q = q.where(Alert.dismissed == False)  # noqa: E712
+    """Get full detail of a specific alert OR all alerts for a specific resident."""
+    if id.startswith("res_"):
+        q = select(Alert).where(
+            Alert.resident_id == id,
+            Alert.tenant_id == tenant.id,
+        )
+        if not include_dismissed:
+            q = q.where(Alert.dismissed == False)  # noqa: E712
 
-    result = await db.execute(q.order_by(Alert.generated_at.desc()))
-    alerts = result.scalars().all()
-    return {
-        "resident_id": resident_id,
-        "alerts": [_alert_to_response(a) for a in alerts],
-    }
-
-
-@router.get("/detail/{alert_id}")
-async def get_alert(
-    alert_id: str,
-    tenant: Annotated[Tenant, Depends(get_current_tenant)],
-    db: AsyncSession = Depends(get_db),
-):
-    """Get full detail of a specific alert."""
-    alert = await _get_alert_or_404(alert_id, tenant, db)
-    return _alert_to_response(alert)
+        result = await db.execute(q.order_by(Alert.generated_at.desc()))
+        alerts = result.scalars().all()
+        return {
+            "resident_id": id,
+            "alerts": [_alert_to_response(a) for a in alerts],
+        }
+    else:
+        alert = await _get_alert_or_404(id, tenant, db)
+        return _alert_to_response(alert)
 
 
 @router.post("/{alert_id}/acknowledge")

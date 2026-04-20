@@ -3,6 +3,8 @@ BehaveDrift API — Application Settings
 Loaded from environment variables via pydantic-settings.
 All config is documented in .env.example.
 """
+from __future__ import annotations
+
 
 from functools import lru_cache
 from pydantic import field_validator

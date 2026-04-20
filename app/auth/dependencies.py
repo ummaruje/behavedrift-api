@@ -8,6 +8,7 @@ Supports:
 All auth is tenant-scoped. A valid token always resolves to a Tenant.
 """
 
+from __future__ import annotations
 from typing import Annotated
 
 from fastapi import Depends, Header

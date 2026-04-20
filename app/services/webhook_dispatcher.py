@@ -2,6 +2,8 @@
 Webhook Dispatch Service
 Handles firing webhook payloads to registered endpoints.
 """
+from __future__ import annotations
+
 
 import httpx
 import hmac

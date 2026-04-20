@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import String, DateTime, Boolean, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -31,7 +31,7 @@ class Tenant(Base):
     # Credentials — stored as hashes, never plaintext
     client_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     client_secret_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    api_key_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    api_key_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

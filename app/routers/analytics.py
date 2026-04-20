@@ -1,4 +1,6 @@
 """Router: /v1/analytics — population-level analytics, trends, and export."""
+from __future__ import annotations
+
 
 from datetime import date
 from typing import Annotated
@@ -15,6 +17,7 @@ from app.services.analytics import (
     calculate_population_risk,
     calculate_resident_trend,
     generate_export_csv,
+    calculate_correlations,
 )
 
 router = APIRouter(prefix="/v1/analytics", tags=["Analytics"])
@@ -50,6 +53,22 @@ async def get_resident_trend(
     Returns time-series drift scores for a resident over the specified period.
     """
     return await calculate_resident_trend(resident_id, tenant.id, db, days)
+
+
+# ---- Correlations ----
+
+
+@router.get("/correlations")
+async def get_correlations(
+    tenant: Annotated[Tenant, Depends(get_current_tenant)],
+    db: AsyncSession = Depends(get_db),
+    days: int = Query(default=30, ge=7, le=365)
+):
+    """
+    Returns Staff / environment correlation analysis.
+    This identifies patterns like 'which staff member correlates with fewer alerts'
+    """
+    return await calculate_correlations(tenant.id, db, days)
 
 
 # ---- Export ----

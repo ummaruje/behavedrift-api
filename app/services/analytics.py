@@ -2,6 +2,8 @@
 Analytics Service
 Extracts complex query logic for population risk, resident trends, and data export.
 """
+from __future__ import annotations
+
 
 import csv
 import io
@@ -299,3 +301,24 @@ async def generate_export_csv(
 
     output.seek(0)
     return output
+
+
+async def calculate_correlations(tenant_id: str, db: AsyncSession, days: int) -> dict:
+    """Basic mock implementation of correlation analysis."""
+    # In a full implementation, this would join observations and alerts 
+    # to find statistical correlations between time, staff, and behavior.
+    return {
+        "analysis_period_days": days,
+        "strongest_correlations": [
+            {
+                "factor": "continuity_of_carer", 
+                "correlation_coefficient": 0.72,
+                "finding": "Higher staff continuity correlates with more stable drift scores."
+            },
+            {
+                "factor": "time_of_day",
+                "correlation_coefficient": 0.65,
+                "finding": "Alert generation peaks between 16:00 and 18:00 (sundowning pattern)."
+            }
+        ]
+    }

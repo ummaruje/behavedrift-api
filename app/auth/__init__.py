@@ -1,4 +1,6 @@
 """BehaveDrift — Auth layer package."""
+from __future__ import annotations
+
 
 from app.auth.jwt import create_access_token, verify_token
 from app.auth.hashing import hash_secret, verify_secret
