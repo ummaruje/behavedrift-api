@@ -4,9 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![API Version](https://img.shields.io/badge/API-v1.0.0-blue.svg)](https://github.com/umarisa/behavedrift-api)
 [![OpenAPI 3.1](https://img.shields.io/badge/OpenAPI-3.1-orange.svg)](docs/openapi.yaml)
-[![FHIR R4 Compatible](https://img.shields.io/badge/FHIR-R4%20Compatible-purple.svg)](https://hl7.org/fhir/)
-[![GDPR Compliant](https://img.shields.io/badge/GDPR-Compliant-critical.svg)](#security--compliance)
-[![NHS DSPT Ready](https://img.shields.io/badge/NHS%20DSPT-Ready-blue.svg)](#security--compliance)
+[![FHIR R4 Mapped](https://img.shields.io/badge/FHIR-R4%20Mapped-yellow.svg)](https://hl7.org/fhir/)
+[![GDPR Article 25](https://img.shields.io/badge/GDPR-Article%2025%20Privacy%20by%20Design-blue.svg)](#security--compliance)
 
 ---
 
@@ -677,10 +676,11 @@ Each resident's baseline is modelled as a **multivariate time-series profile** u
 | **Prophet (Facebook)** | Temporal pattern & seasonality awareness |
 
 ### Infection Pattern Library
-A curated library of **pre-hospitalisation behavioural signatures**, derived from retrospective analysis of care records, is used to correlate detected drift patterns with known pre-infection presentations. This library is:
-- Open for community contribution
-- Updated quarterly
-- Versioned and transparent
+A curated library of **behavioural indicator patterns based on published clinical literature** — including [NICE CG161](https://www.nice.org.uk/guidance/cg161) (UTIs in adults), [NHS England dementia care guidance](https://www.england.nhs.uk/mental-health/dementia/), and peer-reviewed observational studies on behavioural indicators of infection in dementia populations — is used to correlate detected drift patterns with known pre-infection behavioural presentations.
+
+These are **decision-support heuristics, not diagnostic tools**. The library is:
+- Open for community contribution and clinical review
+- Versioned and transparent — every pattern cites its source
 
 ### Model Transparency
 - All drift scores include a **signal contribution breakdown**
@@ -701,7 +701,7 @@ A curated library of **pre-hospitalisation behavioural signatures**, derived fro
 
 ```bash
 # Clone the repository
-git clone https://github.com/umarisa/behavedrift-api.git
+git clone https://github.com/ummaruje/behavedrift-api.git
 cd behavedrift-api
 
 # Copy environment configuration
@@ -714,10 +714,10 @@ nano .env
 docker-compose up -d
 
 # Run database migrations
-docker-compose exec api python manage.py migrate
+docker-compose exec api alembic upgrade head
 
 # Create your first tenant and API credentials
-docker-compose exec api python manage.py create_tenant \
+docker-compose exec api python manage.py create-tenant \
   --name "Sunrise Care Home" \
   --contact-email "admin@sunrisecare.co.uk"
 ```
@@ -729,7 +729,7 @@ docker-compose exec api python manage.py create_tenant \
 ### Source Installation
 
 ```bash
-git clone https://github.com/umarisa/behavedrift-api.git
+git clone https://github.com/ummaruje/behavedrift-api.git
 cd behavedrift-api
 
 # Create virtual environment
@@ -742,8 +742,8 @@ pip install -r requirements.txt
 # Configure environment
 cp .env.example .env
 
-# Run migrations
-python manage.py migrate
+# Run migrations (requires PostgreSQL running)
+alembic upgrade head
 
 # Start the API server
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -812,13 +812,12 @@ ALLOWED_HOSTS=api.behavedrift.io,localhost
 
 | Standard | Status |
 |----------|--------|
-| **GDPR / UK GDPR** | ✅ Compliant — Privacy by Design (Article 25) |
-| **NHS DSPT (Data Security & Protection Toolkit)** | ✅ Aligned |
-| **NHS Digital DSCR Standards** | ✅ Compatible |
-| **CQC KLOE Data Requirements** | ✅ Exportable in required formats |
-| **HL7 FHIR R4** | ✅ Native support |
-| **SNOMED CT** | ✅ Coded observations |
-| **ISO 27001** | 🔄 In progress |
+| **GDPR / UK GDPR** | 🔧 Designed with Article 25 (Privacy by Design) principles — pseudonymised identifiers, tenant isolation, right to erasure endpoint |
+| **NHS DSPT** | 🔄 Architecture supports DSPT alignment (toolkit not yet submitted) |
+| **NHS Digital DSCR Standards** | 🔧 API designed for DSCR integration patterns |
+| **CQC KLOE Data Requirements** | 🔧 Export formats designed to support CQC data requirements |
+| **HL7 FHIR R4** | 🔧 Partial mapping — Observation, Patient, RiskAssessment resources |
+| **SNOMED CT** | 🔧 Coded observations for supported signal types |
 
 ### Data Retention
 - Observation data: Configurable retention (default 7 years, aligning with NHS records management)
@@ -836,32 +835,32 @@ The API provides `/v1/residents/{resident_id}/gdpr/erase` endpoint to support UK
 ### v1.0.0 — Foundation *(Current)*
 - [x] Core observation ingestion API
 - [x] Resident baseline profiling
-- [x] CUSUM + Z-score drift detection
-- [x] Tiered alert system
-- [x] FHIR R4 observation input/output
-- [x] OAuth 2.0 authentication
+- [x] Z-score drift detection
+- [x] Tiered alert system (T1–T4)
+- [x] OAuth 2.0 + API Key dual authentication
 - [x] Webhook event system
-- [x] Nourish integration guide
-- [x] Radar Healthcare integration guide
+- [x] Tenant isolation and pseudonymised identifiers
+- [x] Integration test suite
 - [x] Docker deployment
 
-### v1.1.0 — Clinical Enrichment *(Q3 2025)*
-- [ ] Expanded infection pattern library (UTI, respiratory, cellulitis)
-- [ ] Pain assessment signal integration (PAINAD scale)
+### v1.1.0 — Clinical Enrichment *(Planned)*
+- [ ] Expanded infection indicator pattern library (respiratory, cellulitis)
+- [ ] PAINAD pain assessment signal integration
 - [ ] Falls risk precursor correlation
-- [ ] GP-facing alert summary export (ClinicalDocument standard)
+- [ ] FHIR R4 observation input/output (currently partial mapping)
+- [ ] GP-facing alert summary export
 
-### v1.2.0 — AI Enhancement *(Q4 2025)*
-- [ ] LLM-powered alert narrative generation (plain English summaries for carers)
+### v1.2.0 — AI Enhancement *(Exploring)*
+- [ ] LLM-powered alert narrative generation
 - [ ] Retrospective analysis: "Would BehaveDrift have caught this?" reporting
 - [ ] Predictive risk scoring (7-day forward risk)
 - [ ] Medication side-effect correlation engine
 
-### v2.0.0 — Ecosystem *(2026)*
+### v2.0.0 — Ecosystem *(Future Vision)*
 - [ ] Real-time wearable data ingestion (vitals, activity sensors)
 - [ ] Multi-resident cohort analysis (outbreak detection)
-- [ ] NHS 111 / GP at Hand integration for clinical escalation
-- [ ] Certified as Medical Device Software (UKCA/MDR Class I)
+- [ ] Clinical system escalation integrations
+- [ ] CUSUM algorithm alongside Z-score for gradual shift detection
 
 ---
 

@@ -4,6 +4,16 @@ Clinical pattern matching library.
 Maps combinations of flagged signals to known clinical patterns
 (e.g. UTI precursor, respiratory infection, psychological decline).
 
+Pattern definitions are informed by published clinical literature:
+  - NICE CG161: Urinary tract infections in adults
+    https://www.nice.org.uk/guidance/cg161
+  - NHS England: Dementia — assessment, management and support
+    https://www.england.nhs.uk/mental-health/dementia/
+  - Juthani-Mehta M et al. (2009). "Clinical features to identify UTI
+    in nursing home residents." J Am Geriatr Soc, 57(6), 963-970.
+  - Balogun SA, Philbrick JT (2014). "Delirium, a Symptom of UTI in
+    the Elderly." J Am Board Fam Med, 27(1), 151-157.
+
 IMPORTANT: These patterns are decision-support heuristics, NOT diagnoses.
 All pattern matches must include a confidence score and suggested actions.
 The API never outputs a diagnosis — only a pattern correlation.
