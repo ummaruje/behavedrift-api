@@ -6,6 +6,19 @@
 [![OpenAPI 3.1](https://img.shields.io/badge/OpenAPI-3.1-orange.svg)](docs/openapi.yaml)
 [![FHIR R4 Mapped](https://img.shields.io/badge/FHIR-R4%20Mapped-yellow.svg)](https://hl7.org/fhir/)
 [![GDPR Article 25](https://img.shields.io/badge/GDPR-Article%2025%20Privacy%20by%20Design-blue.svg)](#security--compliance)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Swagger%20UI-brightgreen.svg)](https://behavedrift-api.onrender.com/docs)
+
+---
+
+### 🚀 Try it now — [Live API Demo](https://behavedrift-api.onrender.com/docs)
+
+| Resource | URL |
+|----------|-----|
+| **Interactive Swagger UI** | [behavedrift-api.onrender.com/docs](https://behavedrift-api.onrender.com/docs) |
+| **ReDoc API Reference** | [behavedrift-api.onrender.com/redoc](https://behavedrift-api.onrender.com/redoc) |
+| **Health Check** | [behavedrift-api.onrender.com/health](https://behavedrift-api.onrender.com/health) |
+
+> *Free-tier hosting — first request after inactivity may take ~30 seconds to wake up.*
 
 ---
 
