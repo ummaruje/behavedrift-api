@@ -55,8 +55,8 @@ info:
 servers:
   - url: http://localhost:8000
     description: Local development
-  - url: https://api.behavedrift.io
-    description: Production (when deployed)
+  - url: https://behavedrift-api.onrender.com
+    description: Production
 
 tags:
   - name: Health

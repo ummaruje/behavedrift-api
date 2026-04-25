@@ -7,8 +7,8 @@ import ulid
 
 class AuditLog(Base):
     """
-    Immutable audit trail for all significant API actions and system events.
-    Required for regulatory compliance (CQC, GDPR).
+    Standard relational audit trail for significant API actions and system events.
+    Stored in a standard PostgreSQL table to support compliance logging (e.g., GDPR).
     """
 
     __tablename__ = "audit_logs"

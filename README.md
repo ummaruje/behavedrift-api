@@ -517,7 +517,7 @@ def on_nourish_care_record_event(event: dict):
     observation = map_nourish_to_behavedrift(event)
     
     response = httpx.post(
-        "https://api.behavedrift.io/v1/observations",
+        "https://behavedrift-api.onrender.com/v1/observations",
         json=observation,
         headers={
             "Authorization": f"Bearer {BEHAVEDRIFT_TOKEN}",
@@ -802,7 +802,7 @@ ALERT_FROM_EMAIL=alerts@behavedrift.io
 
 # Deployment
 ENVIRONMENT=production
-ALLOWED_HOSTS=api.behavedrift.io,localhost
+ALLOWED_HOSTS=behavedrift-api.onrender.com,localhost
 ```
 
 ---
@@ -813,11 +813,11 @@ ALLOWED_HOSTS=api.behavedrift.io,localhost
 
 | Control | Implementation |
 |---------|---------------|
-| Encryption at rest | AES-256 |
+| Encryption at rest | Managed by database provider |
 | Encryption in transit | TLS 1.3 |
 | Authentication | OAuth 2.0 + JWT (RS256) |
 | Authorisation | RBAC with tenant isolation |
-| Audit logging | Immutable audit trail, all API calls logged |
+| Audit logging | Standard relational audit table (app/models/audit.py) |
 | Data residency | UK-hosted by default (AWS eu-west-2 / Azure UK South) |
 | Pseudonymisation | Resident identifiers pseudonymised at ingestion |
 

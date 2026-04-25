@@ -58,7 +58,7 @@ Designed inherently for the UK healthcare market, privacy and security are corne
 
 *   **Data Pseudonymization at Source:** The system is agnostic to true resident identity.
 *   **Infrastructure Segregation:** Tenancy isolation implemented across REST endpoints.
-*   **Rigid Encryption:** Transport secured via TLS 1.3, at-rest via AES-256.
+*   **Encryption:** Transport secured via TLS 1.3, at-rest via database provider (e.g., Render Managed PostgreSQL).
 *   **Compliance Status:** Prepared and aligned with **UK GDPR (Privacy by Design - Art.25)**, **NHS DSPT (Data Security & Protection Toolkit)**, and **CQC KLOE** reporting metrics.
 
 ---
