@@ -1,0 +1,38 @@
+# render.yaml — Render Blueprint for BehaveDrift API
+# Deploy via: https://render.com/deploy
+
+services:
+  - type: web
+    name: behavedrift-api
+    runtime: docker
+    repo: https://github.com/ummaruje/behavedrift-api.git
+    branch: main
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: behavedrift-db
+          property: connectionString
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: LOG_FORMAT
+        value: json
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: REDIS_URL
+        value: ""
+      - key: WEBHOOK_SIGNING_SECRET
+        generateValue: true
+
+databases:
+  - name: behavedrift-db
+    plan: free
+    databaseName: behavedrift
+    user: behavedrift
