@@ -58,6 +58,17 @@ async def lifespan(app: FastAPI):
     # Connect to Redis
     await init_redis(settings.redis_url)
 
+    # Auto-run database migrations on startup (needed for free hosting without shell)
+    try:
+        from alembic.config import Config
+        from alembic import command
+
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        log.info("Database migrations applied successfully.")
+    except Exception as e:
+        log.warning(f"Migration skipped or failed: {e}")
+
     yield
 
     # Shutdown
