@@ -14,14 +14,15 @@ async def health_check():
     """
     Returns service and dependency health.
     No authentication required — used by load balancers and monitoring tools.
+
+    Core status is determined by database connectivity alone.
+    Redis is optional (used for rate limiting only) and reported separately.
     """
     from app.database import engine
-    import redis.asyncio as aioredis
-    from app.config import get_settings
+    from app import redis as redis_module
 
-    settings = get_settings()
     db_status = "disconnected"
-    redis_status = "disconnected"
+    redis_status = "not configured"
 
     try:
         async with engine.connect() as conn:
@@ -30,19 +31,16 @@ async def health_check():
     except Exception:
         pass
 
-    try:
-        r = aioredis.from_url(settings.redis_url, socket_connect_timeout=1)
-        await r.ping()
-        await r.aclose()
-        redis_status = "connected"
-    except Exception:
-        pass
+    # Report Redis status based on whether it was initialised at startup
+    if redis_module.redis_client is not None:
+        try:
+            await redis_module.redis_client.ping()
+            redis_status = "connected"
+        except Exception:
+            redis_status = "disconnected"
 
-    overall = (
-        "healthy"
-        if db_status == "connected" and redis_status == "connected"
-        else "degraded"
-    )
+    # Core health is based on database only — Redis is optional infrastructure
+    overall = "healthy" if db_status == "connected" else "unhealthy"
 
     return {
         "status": overall,
