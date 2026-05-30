@@ -112,9 +112,7 @@ async def test_fhir_ingestion_generates_alert(
     # Set the resident's baseline_data manually to simulate an active baseline.
     setup_resident.baseline_status = "active"
     setup_resident.baseline_data = {
-        "signals": {
-            "mood": {"mean": 4.5, "std_dev": 0.2, "sample_count": 20}
-        }
+        "signals": {"mood": {"mean": 4.5, "std_dev": 0.2, "sample_count": 20}}
     }
     db_session.add(setup_resident)
     await db_session.commit()
@@ -124,20 +122,22 @@ async def test_fhir_ingestion_generates_alert(
         "resourceType": "Observation",
         "status": "final",
         "code": {
-            "coding": [{
-                "system": "http://snomed.info/sct",
-                "code": "285854004",  # Emotion -> mood
-                "display": "Emotion"
-            }]
+            "coding": [
+                {
+                    "system": "http://snomed.info/sct",
+                    "code": "285854004",  # Emotion -> mood
+                    "display": "Emotion",
+                }
+            ]
         },
-        "subject": {
-            "reference": f"Patient/{setup_resident.id}"
-        },
+        "subject": {"reference": f"Patient/{setup_resident.id}"},
         "effectiveDateTime": "2026-03-14T15:00:00Z",
-        "valueInteger": 1  # mood value of 1 against mean of 4.5 std 0.2 -> z=17.5!
+        "valueInteger": 1,  # mood value of 1 against mean of 4.5 std 0.2 -> z=17.5!
     }
 
-    response = await client.post("/v1/observations/fhir", headers=headers, json=fhir_obs)
+    response = await client.post(
+        "/v1/observations/fhir", headers=headers, json=fhir_obs
+    )
     assert response.status_code == 201
     data = response.json()
     assert data["status"] == "processed"

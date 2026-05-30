@@ -81,7 +81,9 @@ async def build_baseline(
     for signal_name, values in signal_values.items():
         mean = _weighted_mean(values, weight_factor=settings.baseline_recency_weight)
         # Apply recency weighting — recent observations count more
-        std = _weighted_std(values, mean, weight_factor=settings.baseline_recency_weight)
+        std = _weighted_std(
+            values, mean, weight_factor=settings.baseline_recency_weight
+        )
         cats = signal_categorical.get(signal_name, [])
         most_common = Counter(cats).most_common(1)[0][0] if cats else None
 
@@ -122,7 +124,9 @@ def _weighted_mean(values: list[float], weight_factor: float = 1.5) -> float:
     return sum(w * v for w, v in zip(weights, values)) / total_weight
 
 
-def _weighted_std(values: list[float], mean: float, weight_factor: float = 1.5) -> float:
+def _weighted_std(
+    values: list[float], mean: float, weight_factor: float = 1.5
+) -> float:
     """
     Compute a recency-weighted standard deviation around the provided weighted mean.
     """
@@ -134,10 +138,7 @@ def _weighted_std(values: list[float], mean: float, weight_factor: float = 1.5) 
     weights = [1.0 + (weight_factor - 1.0) * (i / (n - 1)) for i in range(n)]
     total_weight = sum(weights)
 
-    variance = (
-        sum(w * (v - mean) ** 2 for w, v in zip(weights, values))
-        / total_weight
-    )
+    variance = sum(w * (v - mean) ** 2 for w, v in zip(weights, values)) / total_weight
 
     return math.sqrt(variance)
 

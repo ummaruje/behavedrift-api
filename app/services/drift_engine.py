@@ -130,7 +130,13 @@ class DriftEvaluation:
     message: str | None = None
 
 
-_POSITIVE_SIGNALS = {"mood", "appetite", "sleep_quality", "social_engagement", "mobility"}
+_POSITIVE_SIGNALS = {
+    "mood",
+    "appetite",
+    "sleep_quality",
+    "social_engagement",
+    "mobility",
+}
 _NEGATIVE_SIGNALS = {"pain_indicators", "agitation"}
 
 
@@ -249,7 +255,9 @@ def evaluate_drift(
     if triggered and signals_flagged_names:
         clinical_pattern = match_clinical_pattern(signals, signals_flagged_names)
     elif not triggered and flagged_improvements:
-        clinical_pattern = match_clinical_pattern(signals, flagged_improvements, is_improvement=True)
+        clinical_pattern = match_clinical_pattern(
+            signals, flagged_improvements, is_improvement=True
+        )
 
     return DriftEvaluation(
         drift_score=drift_score,
