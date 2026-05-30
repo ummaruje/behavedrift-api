@@ -90,7 +90,31 @@ async def _process_single_observation(
     await db.flush()
 
     # Generate alert if drift triggered
-    alert_summary = None
+    alert_summary = await _create_alert_if_triggered(evaluation, resident, tenant, db)
+
+    return {
+        "observation_id": obs.id,
+        "resident_id": resident.id,
+        "processed_at": datetime.now(timezone.utc),
+        "drift_evaluation": {
+            "triggered": evaluation.triggered,
+            "drift_score": evaluation.drift_score,
+            "baseline_status": resident.baseline_status,
+            "signals_flagged": evaluation.signals_flagged,
+            "alert_generated": alert_summary,
+            "message": evaluation.message,
+        },
+        "status": "processed",
+    }
+
+
+async def _create_alert_if_triggered(
+    evaluation,
+    resident: Resident,
+    tenant: Tenant,
+    db: AsyncSession,
+) -> dict | None:
+    """Generate and persist alert if drift is triggered."""
     if evaluation.triggered and evaluation.tier:
         explanation = {
             "summary": _build_explanation_summary(evaluation),
@@ -117,26 +141,12 @@ async def _process_single_observation(
         )
         db.add(alert)
         await db.flush()
-        alert_summary = {
+        return {
             "alert_id": alert.id,
             "tier": alert.tier,
             "tier_label": alert.tier_label,
         }
-
-    return {
-        "observation_id": obs.id,
-        "resident_id": resident.id,
-        "processed_at": datetime.now(timezone.utc),
-        "drift_evaluation": {
-            "triggered": evaluation.triggered,
-            "drift_score": evaluation.drift_score,
-            "baseline_status": resident.baseline_status,
-            "signals_flagged": evaluation.signals_flagged,
-            "alert_generated": alert_summary,
-            "message": evaluation.message,
-        },
-        "status": "processed",
-    }
+    return None
 
 
 def _build_explanation_summary(evaluation) -> str:
@@ -245,6 +255,8 @@ async def create_fhir_observation(
     resident.last_observation_at = observed_at  # type: ignore[assignment]
     await db.flush()
 
+    alert_summary = await _create_alert_if_triggered(evaluation, resident, tenant, db)
+
     return {
         "observation_id": obs.id,
         "resident_id": resident.id,
@@ -254,7 +266,7 @@ async def create_fhir_observation(
             "drift_score": evaluation.drift_score,
             "baseline_status": resident.baseline_status,
             "signals_flagged": evaluation.signals_flagged,
-            "alert_generated": None,
+            "alert_generated": alert_summary,
             "message": evaluation.message,
         },
         "status": "processed",

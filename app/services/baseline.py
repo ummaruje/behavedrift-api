@@ -80,9 +80,9 @@ async def build_baseline(
     total_obs = len(observations)
 
     for signal_name, values in signal_values.items():
-        mean = statistics.mean(values)
+        mean = _weighted_mean(values, weight_factor=settings.baseline_recency_weight)
         # Apply recency weighting — recent observations count more
-        std = _weighted_std(values, weight_factor=settings.baseline_recency_weight)
+        std = _weighted_std(values, mean, weight_factor=settings.baseline_recency_weight)
         cats = signal_categorical.get(signal_name, [])
         most_common = Counter(cats).most_common(1)[0][0] if cats else None
 
@@ -103,12 +103,29 @@ async def build_baseline(
     }
 
 
-def _weighted_std(values: list[float], weight_factor: float = 1.5) -> float:
+def _weighted_mean(values: list[float], weight_factor: float = 1.5) -> float:
     """
-    Compute a recency-weighted standard deviation.
+    Compute a recency-weighted mean.
 
     More recent observations (later in the list) are assigned higher weights.
     weight_factor > 1.0 amplifies recency bias.
+    """
+    n = len(values)
+    if n < 1:
+        return 0.0
+    if n == 1:
+        return values[0]
+
+    # Linear weights: oldest = 1.0, newest = weight_factor
+    weights = [1.0 + (weight_factor - 1.0) * (i / (n - 1)) for i in range(n)]
+    total_weight = sum(weights)
+
+    return sum(w * v for w, v in zip(weights, values)) / total_weight
+
+
+def _weighted_std(values: list[float], mean: float, weight_factor: float = 1.5) -> float:
+    """
+    Compute a recency-weighted standard deviation around the provided weighted mean.
     """
     n = len(values)
     if n < 2:
@@ -118,9 +135,8 @@ def _weighted_std(values: list[float], weight_factor: float = 1.5) -> float:
     weights = [1.0 + (weight_factor - 1.0) * (i / (n - 1)) for i in range(n)]
     total_weight = sum(weights)
 
-    weighted_mean = sum(w * v for w, v in zip(weights, values)) / total_weight
     variance = (
-        sum(w * (v - weighted_mean) ** 2 for w, v in zip(weights, values))
+        sum(w * (v - mean) ** 2 for w, v in zip(weights, values))
         / total_weight
     )
 

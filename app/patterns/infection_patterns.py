@@ -92,6 +92,7 @@ _PATTERNS = [
 def match_clinical_pattern(
     signals: dict[str, Any],
     flagged_signal_names: list[str],
+    is_improvement: bool = False,
 ) -> dict | None:
     """
     Attempt to match flagged signals to a clinical pattern.
@@ -99,6 +100,19 @@ def match_clinical_pattern(
     Returns the best matching pattern dict, or None if no match.
     Always includes a confidence score and suggested actions.
     """
+    if is_improvement:
+        if not flagged_signal_names:
+            return None
+        return {
+            "pattern": "positive_improvement",
+            "confidence": round(min(0.50 + len(flagged_signal_names) * 0.10, 0.95), 4),
+            "suggested_actions": [
+                "Continue current care plan interventions",
+                "Document recent environmental or medication changes that may contribute to improvement",
+                "Review with multi-disciplinary team during next scheduled assessment",
+            ],
+        }
+
     flagged_set = set(flagged_signal_names)
     best_match = None
     best_confidence = 0.0

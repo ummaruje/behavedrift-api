@@ -175,3 +175,55 @@ def test_evaluate_drift_score_never_exceeds_1():
     }
     result = evaluate_drift(signals, baseline_data=big_baseline, risk_profile="high")
     assert result.drift_score <= 1.0
+
+
+def test_evaluate_drift_improvement_does_not_trigger_clinical_alert():
+    # Baseline mean mood=3.0, std=0.5. Current mood=5.0 (significant improvement).
+    # Baseline mean agitation=3.0, std=0.5. Current agitation=1.0 (significant improvement).
+    signals = {"mood": {"value": 5}, "agitation": {"value": "calm"}}
+    baseline = {
+        "signals": {
+            "mood": {"mean": 3.0, "std_dev": 0.5, "sample_count": 30},
+            "agitation": {"mean": 3.0, "std_dev": 0.5, "sample_count": 30},
+        }
+    }
+    result = evaluate_drift(signals, baseline_data=baseline)
+    # Should not trigger a clinical alert (tier/warning) since it's an improvement
+    assert result.triggered is False
+    assert result.tier is None
+    assert result.drift_score == 0.0
+    # But it should match the positive improvement pattern!
+    assert result.clinical_pattern is not None
+    assert result.clinical_pattern["pattern"] == "positive_improvement"
+
+
+def test_evaluate_drift_deterioration_triggers_clinical_alert():
+    # Baseline mean mood=4.0, std=0.5. Current mood=1.0 (significant decline).
+    # Baseline mean agitation=1.5, std=0.3. Current agitation=4.0 (significant increase/deterioration).
+    signals = {"mood": {"value": 1}, "agitation": {"value": "severe"}}
+    baseline = {
+        "signals": {
+            "mood": {"mean": 4.0, "std_dev": 0.5, "sample_count": 30},
+            "agitation": {"mean": 1.5, "std_dev": 0.3, "sample_count": 30},
+        }
+    }
+    result = evaluate_drift(signals, baseline_data=baseline)
+    assert result.triggered is True
+    assert result.tier is not None
+    assert result.drift_score > 0.0
+    assert result.clinical_pattern is not None
+    assert result.clinical_pattern["pattern"] == "uti_precursor"
+
+
+def test_pain_indicators_direct_value_parsing():
+    # Test fallback direct value parsing for FHIR observations
+    signal_data = {"value": 3.0}
+    assert _signal_to_numeric("pain_indicators", signal_data) == 3.0
+
+    # Test handling string numbers gracefully
+    signal_data_str = {"value": "4.5"}
+    assert _signal_to_numeric("pain_indicators", signal_data_str) == 4.5
+
+    # Test invalid string values fallback to standard flag counting (which will return 0.0)
+    signal_data_invalid = {"value": "not-a-number"}
+    assert _signal_to_numeric("pain_indicators", signal_data_invalid) == 0.0

@@ -38,10 +38,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         key = f"rate_limit:{identifier}:{current_minute}"
 
         try:
-            current_count = await redis.redis_client.incr(key)
-            if current_count == 1:
-                # Expire the key safely after the window passes
-                await redis.redis_client.expire(key, 60)
+            pipe = redis.redis_client.pipeline()
+            pipe.incr(key)
+            pipe.expire(key, 60)
+            res = await pipe.execute()
+            current_count = res[0]
 
             if current_count > settings.rate_limit_requests_per_minute:
                 return JSONResponse(

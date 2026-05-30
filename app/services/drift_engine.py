@@ -73,6 +73,12 @@ def _signal_to_numeric(signal_name: str, signal_data: dict[str, Any]) -> float |
 
     if signal_name == "pain_indicators":
         # Score = count of True flags (0–5)
+        # Fallback: if value is provided directly (e.g. via FHIR), return it
+        if "value" in signal_data and signal_data["value"] is not None:
+            try:
+                return float(signal_data["value"])
+            except (ValueError, TypeError):
+                pass
         flags = [
             "facial_grimacing",
             "guarding",
@@ -124,6 +130,10 @@ class DriftEvaluation:
     message: str | None = None
 
 
+_POSITIVE_SIGNALS = {"mood", "appetite", "sleep_quality", "social_engagement", "mobility"}
+_NEGATIVE_SIGNALS = {"pain_indicators", "agitation"}
+
+
 def evaluate_drift(
     signals: dict[str, Any],
     baseline_data: dict[str, Any],
@@ -153,6 +163,7 @@ def evaluate_drift(
 
     baseline_signals: dict[str, dict] = baseline_data.get("signals", {})
     evaluations: list[SignalEvaluation] = []
+    flagged_improvements: list[str] = []
 
     for signal_name, signal_data in signals.items():
         if signal_name not in baseline_signals:
@@ -167,6 +178,23 @@ def evaluate_drift(
         std = bsl.get("std_dev", 0.0)
         z = _z_score(numeric_value, mean, std)
 
+        is_deterioration = False
+        is_improvement = False
+        if z >= _SIGNAL_Z_FLAG_THRESHOLD:
+            if signal_name in _POSITIVE_SIGNALS:
+                if numeric_value < mean:
+                    is_deterioration = True
+                elif numeric_value > mean:
+                    is_improvement = True
+            elif signal_name in _NEGATIVE_SIGNALS:
+                if numeric_value > mean:
+                    is_deterioration = True
+                elif numeric_value < mean:
+                    is_improvement = True
+
+        if is_improvement:
+            flagged_improvements.append(signal_name)
+
         evaluations.append(
             SignalEvaluation(
                 signal=signal_name,
@@ -174,7 +202,7 @@ def evaluate_drift(
                 baseline_mean=mean,
                 baseline_std=std,
                 z_score=round(z, 4),
-                flagged=z >= _SIGNAL_Z_FLAG_THRESHOLD,
+                flagged=is_deterioration,
             )
         )
 
@@ -220,6 +248,8 @@ def evaluate_drift(
     clinical_pattern = None
     if triggered and signals_flagged_names:
         clinical_pattern = match_clinical_pattern(signals, signals_flagged_names)
+    elif not triggered and flagged_improvements:
+        clinical_pattern = match_clinical_pattern(signals, flagged_improvements, is_improvement=True)
 
     return DriftEvaluation(
         drift_score=drift_score,
