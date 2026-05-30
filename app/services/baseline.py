@@ -12,7 +12,6 @@ Resident row — avoiding expensive real-time calculation on every observation.
 from __future__ import annotations
 
 import math
-import statistics
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Any
